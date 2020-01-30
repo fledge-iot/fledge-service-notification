@@ -20,7 +20,7 @@
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"
 #define NOTIFICATION_CATEGORY	"NOTIFICATION"
-
+#define DEFAULT_DELIVERY_WORKER_THREADS 2
 /**
  * The NotificationService class.
  */
@@ -54,5 +54,6 @@ class NotificationService : public ServiceHandler
 		StorageClient*		m_storage;
 		std::map<std::string, bool>
 					m_registerCategories;
+		unsigned long		m_delivery_threads;
 };
 #endif
