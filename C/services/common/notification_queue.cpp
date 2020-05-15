@@ -22,6 +22,7 @@
 #include <notification_api.h>
 #include <notification_subscription.h>
 #include <notification_queue.h>
+#include <delivery_queue.h>
 
 using namespace std;
 
@@ -766,6 +767,14 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 	bool evalRule = false;
 	string assetName = info.getAssetName();
 	string ruleName = info.getRuleName();
+	// Get last object in the buffers
+	auto c = readingsData.back();
+	vector<Reading *>*s = c->getData()->getAllReadingsPtr();
+	// Get last reading data
+	auto r = s->back();
+	struct timeval tm;
+	// Save reading timestamp
+	r->getTimestamp(&tm);
 
 #ifdef QUEUE_DEBUG_DATA
 	// check
@@ -839,6 +848,9 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 			}
 			content += " }";
 
+			// Add timestamp_assetName with reading timestamp
+			content += ", \"timestamp_" + assetName + "\" : " + to_string(tm.tv_sec) + "." + to_string(tm.tv_usec);
+ 
 			// Set result
 			results[assetName].type = info.getType();
 			results[assetName].sData = content;
@@ -1188,6 +1200,9 @@ static void deliverNotification(NotificationRule* rule,
 	NotificationInstance* instance =
 		instances->getNotificationInstance(rule->getNotificationName());
 
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
 	// Get notification action
 	bool handleRule = instance->handleState(evalRule);
 	if (handleRule)
@@ -1220,12 +1235,21 @@ static void deliverNotification(NotificationRule* rule,
 			Logger::getLogger()->info("Notification %s will be delivered with reason %s",
 					rule->getNotificationName().c_str(), reason.c_str());
 			string customText = instance->getDelivery()->getText();
-			bool retCode = plugin->deliver(instance->getDelivery()->getName(),
+
+			// Create data object for delivery queue
+			DeliveryDataElement* deliveryData =
+				new DeliveryDataElement(instance->getDelivery()->getName(),
 							instance->getDelivery()->getNotificationName(),
 							reason,
 							(customText.empty() ?
 							"ALERT for " + rule->getName() :
-							customText));
+							customText),
+							instance);
+
+			// Add data object to the queue
+			DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
+			dQueue->addElement(queueElement);
+							 
 			// Audit log
 			instances->auditNotification(instance->getName(), reason);
 			// Update sent notification statistics
@@ -1451,7 +1475,14 @@ static void deliverData(NotificationRule* rule,
 			const std::multimap<uint64_t, Reading*>& itemData,
 			const map<string, string>& readyData)
 {
+	map<string, bool> assets;
 	map<string, string> values;
+
+	// Get number of assets in the multimap first
+	for (auto a = itemData.begin(); a != itemData.end(); ++a)
+	{
+		assets[(*a).second->getAssetName()] = true;
+	}
 
 	// We have SingleItem data to evaluate
 	string evalJSON = "{ ";
@@ -1488,6 +1519,12 @@ static void deliverData(NotificationRule* rule,
 			// close datapoints
 			assetValue += " }";
 
+			// Get reading timestamp
+			struct timeval tm;
+			(*eq).second->getTimestamp(&tm);
+			// Add timestamp_assetName with reading timestamp
+			assetValue += ", \"timestamp_" + assetName + "\" : " + to_string(tm.tv_sec) + "." + to_string(tm.tv_usec);
+
 			// Save asset value:
 			// if assetName is not found in next point in time
 			// we use this last saved value for the output string.
@@ -1516,7 +1553,10 @@ static void deliverData(NotificationRule* rule,
 		}
 		output += " }" ;
 
-		// Call plugin_eval, plugin_reason and plugin_deliver
-		deliverNotification(rule, output);
+		// If all assets are available call plugin_eval, plugin_reason and plugin_deliver
+		if (assets.size() == values.size())
+		{
+			deliverNotification(rule, output);
+		}
 	}
 }

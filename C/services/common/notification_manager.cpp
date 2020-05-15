@@ -24,6 +24,7 @@
 #include <notification_subscription.h>
 #include <notification_queue.h>
 #include <reading.h>
+#include <delivery_queue.h>
 
 using namespace std;
 
@@ -31,6 +32,10 @@ extern "C" {
 void ingestCB(NotificationService *service, Reading *reading)
 {
 	service->ingestReading(*reading);
+}
+NotificationService *getService(NotificationService *service)
+{
+	return service;
 }
 };
 
@@ -129,9 +134,25 @@ NotificationDelivery::NotificationDelivery(const std::string& name,
  */
 NotificationDelivery::~NotificationDelivery()
 {
-	// Free plugin resources
-	m_plugin->shutdown();
-	delete m_plugin;
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
+	// Create data object for delivery queue
+	// with no reason, no message and notifcation instance set to NULL
+	// This elemet added to delivery queue will signal the need of stutting down
+	// the DeliveryPlugin after processing all data for this Delivery
+	DeliveryDataElement* deliveryData =
+		new DeliveryDataElement(this->getName(),
+					this->getNotificationName(),
+					"",
+					"",
+					NULL);
+
+	// Add data object to the queue
+	DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
+	dQueue->addElement(queueElement);
+
+	// We don't call plugin resources removal here.
 }
 
 /**
@@ -1161,10 +1182,22 @@ bool NotificationManager::setupInstance(const string& name,
 		// and instantiate  NotificationDelivery class
 		if (deliver->init(deliveryConfig))
 		{
+			// Check and set registerIngest
 			if (deliver->ingestData())
 			{
 				deliver->registerIngest((void *)ingestCB, (void *)m_service);
 			}
+
+			// Check and set the NotificationService class
+			if (deliver->getService())
+			{
+				deliver->registerService((void *)getService, (void *)m_service);
+
+				// Call Plugin start
+				deliver->start();
+			}
+
+			// Now create NotificationDelivery object
 			theDelivery = new NotificationDelivery(deliveryCategoryName,
 								notificationName,
 								deliver,
