@@ -354,6 +354,9 @@ void DeliveryQueue::process(int num)
 			delete data;
 		}
 
+		// Check whether the queue has to be stopped
+		doProcess = m_running;
+
 		if (doProcess &&
 		    !idleCount)
 		{
