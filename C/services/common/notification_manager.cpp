@@ -196,12 +196,17 @@ NotificationInstance::~NotificationInstance()
  *
  * @return	A JSON string representation of the instance
  */
-string NotificationInstance::toJSON()
+string NotificationInstance::toJSON(bool showAll)
 {
 	ostringstream ret;
 
 	ret << "{\"name\": \"" << this->getName() << "\", \"enable\": ";
 	ret << (this->isEnabled() ? "true" : "false") << ", ";
+	if (showAll)
+	{
+		ret << "\"active\": ";
+		ret << (!this->isZombie() ? "true" : "false") << ", ";
+	}
 	ret << "\"type\": \"" << this->getTypeString(this->getType()) << "\", ";
 	ret << "\"rule\": \"";
 	ret << (this->getRulePlugin() ? this->getRulePlugin()->getName() : "");
@@ -381,11 +386,21 @@ string NotificationManager::getJSONInstances()
 		  it != m_instances.end();
 		  ++it)
 	{
-		// Get instance JSON string
-		ret += (it->second)->toJSON();
-		if (std::next(it) != m_instances.end())
+		// Do not show Zombie instance
+		if (showAll == true || !it->second->isZombie())
 		{
-			ret += ", ";
+			// Get instance JSON string
+			ret += (it->second)->toJSON(showAll);
+		}
+
+		// Add ', ' separator
+		if (ret[0] != '\0' &&
+		   std::next(it) != m_instances.end())
+		{
+			if (showAll == true || !std::next(it)->second->isZombie())
+			{
+				ret += ", ";
+			}
 		}
 	}
 	return ret;
