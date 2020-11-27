@@ -377,7 +377,7 @@ void NotificationManager::addInstance(const string& instanceName,
  *
  * @return	JSON string with all loaded instances
  */
-string NotificationManager::getJSONInstances()
+string NotificationManager::getJSONInstances(bool showAll)
 {
 	// Protect changes to m_instances
 	lock_guard<mutex> guard(m_instancesMutex);
