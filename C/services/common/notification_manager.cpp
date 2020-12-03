@@ -797,7 +797,29 @@ string NotificationManager::getJSONRules()
 		RulePlugin* builtinRule = this->findBuiltinRule((*it).first);
 		if (builtinRule)
 		{
-			ret += this->getPluginInfo(builtinRule->getInfo());
+			// Get builtin pluginInfo
+			string bRule = this->getPluginInfo(builtinRule->getInfo());
+
+			// TODO: remove this and apply substitution in getPluginInfo()
+			// when new plugin flag SP_BUILTIN will be available
+			// in Fledge C/services/common/include/plugin_api.h 
+			// as per FOGL-4498
+
+			// Replace installedDirectory content with "builtin"
+			regex re("\"(installedDirectory)\"(.*?:.*?)\"(.*?)\",(.*)");
+			bRule = std::regex_replace(bRule,
+						re,
+						"\"$1\": \"builtin\",$4");
+
+			// Replace packageName content with "builtin"
+			re = regex("\"(packageName)\"(.*?:.*?)\"(.*?)\",(.*)");
+			bRule = std::regex_replace(bRule,
+						re,
+						"\"$1\": \"builtin\",$4");
+
+			// Append filtered pluginInfo string to result
+			ret += bRule;
+
 			if (std::next(it) != m_builtinRules.end())
 			{
 				ret += ", ";
@@ -1110,8 +1132,28 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 	}
 	else
 	{
+		string plugin_type = string(info->type);
+
+		// installed_directory: i.e "notificationRule/Average"
+		string installed_directory = plugin_type + "/" + info->name;
+
+		// Return "rule" or "notify" for plugin type
+		if (plugin_type == "notificationRule")
+		{
+			plugin_type = "rule";
+		}
+		if (plugin_type == "notificationDelivery")
+		{
+			plugin_type = "notify";
+		}
+
+		// Set package name
+		string package_name = "fledge-" + plugin_type + "-" + info->name;
+
 		ret += "{\"name\": \"" + string(info->name) + "\", \"version\": \"" + \
-			string(info->version) + "\", \"type\": \"" + string(info->type) + \
+			string(info->version) + "\", \"type\": \"" + plugin_type + \
+			"\", \"installedDirectory\": \"" + installed_directory + \
+			"\", \"packageName\": \"" + package_name + \
 			"\", \"interface\": \"" + string(info->interface) + \
 			"\", \"config\": " + string(info->config) + "}";
 	}
