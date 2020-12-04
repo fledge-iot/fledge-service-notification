@@ -1135,6 +1135,11 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 		} else {
 			// Set package name
 			package_name = "fledge-" + plugin_type + "-" + info->name;
+			// Transform to lowercase
+			std::transform(package_name.begin(), package_name.end(), package_name.begin(),
+					[](unsigned char c){
+					return std::tolower(c);
+			});
 		}
 
 		// Build JSON object
