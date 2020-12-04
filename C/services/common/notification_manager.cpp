@@ -797,28 +797,7 @@ string NotificationManager::getJSONRules()
 		RulePlugin* builtinRule = this->findBuiltinRule((*it).first);
 		if (builtinRule)
 		{
-			// Get builtin pluginInfo
-			string bRule = this->getPluginInfo(builtinRule->getInfo());
-
-			// TODO: remove this and apply substitution in getPluginInfo()
-			// when new plugin flag SP_BUILTIN will be available
-			// in Fledge C/services/common/include/plugin_api.h 
-			// as per FOGL-4498
-
-			// Replace installedDirectory content with empty string
-			regex re("\"(installedDirectory)\"(.*?:.*?)\"(.*?)\",(.*)");
-			bRule = std::regex_replace(bRule,
-						re,
-						"\"$1\": \"\",$4");
-
-			// Replace packageName content with empty string
-			re = regex("\"(packageName)\"(.*?:.*?)\"(.*?)\",(.*)");
-			bRule = std::regex_replace(bRule,
-						re,
-						"\"$1\": \"\",$4");
-
-			// Append filtered pluginInfo string to result
-			ret += bRule;
+			ret += this->getPluginInfo(builtinRule->getInfo());
 
 			if (std::next(it) != m_builtinRules.end())
 			{
@@ -1133,8 +1112,7 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 	else
 	{
 		string plugin_type = string(info->type);
-
-		// installed_directory: i.e "notificationRule/Average"
+		// Installed_directory: i.e "notificationRule/Average"
 		string installed_directory = plugin_type + "/" + info->name;
 
 		// Return "rule" or "notify" for plugin type
@@ -1147,9 +1125,19 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 			plugin_type = "notify";
 		}
 
-		// Set package name
-		string package_name = "fledge-" + plugin_type + "-" + info->name;
+		string package_name;
 
+		// Check for SP_BUILTIN flag
+		if (info->options & SP_BUILTIN)
+		{
+			// Set empty installation directory
+			installed_directory = "";
+		} else {
+			// Set package name
+			package_name = "fledge-" + plugin_type + "-" + info->name;
+		}
+
+		// Build JSON object
 		ret += "{\"name\": \"" + string(info->name) + "\", \"version\": \"" + \
 			string(info->version) + "\", \"type\": \"" + plugin_type + \
 			"\", \"installedDirectory\": \"" + installed_directory + \
