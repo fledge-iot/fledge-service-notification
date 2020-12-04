@@ -805,17 +805,17 @@ string NotificationManager::getJSONRules()
 			// in Fledge C/services/common/include/plugin_api.h 
 			// as per FOGL-4498
 
-			// Replace installedDirectory content with "builtin"
+			// Replace installedDirectory content with empty string
 			regex re("\"(installedDirectory)\"(.*?:.*?)\"(.*?)\",(.*)");
 			bRule = std::regex_replace(bRule,
 						re,
-						"\"$1\": \"builtin\",$4");
+						"\"$1\": \"\",$4");
 
-			// Replace packageName content with "builtin"
+			// Replace packageName content with empty string
 			re = regex("\"(packageName)\"(.*?:.*?)\"(.*?)\",(.*)");
 			bRule = std::regex_replace(bRule,
 						re,
-						"\"$1\": \"builtin\",$4");
+						"\"$1\": \"\",$4");
 
 			// Append filtered pluginInfo string to result
 			ret += bRule;
