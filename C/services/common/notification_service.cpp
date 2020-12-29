@@ -148,7 +148,7 @@ bool NotificationService::start(string& coreAddress,
 					 "Maximum number of notification delivery threads",
 					 "integer", "2", "2");
 	notificationServerConfig.setItemDisplayName("deliveryThreads",
-						    "Maximun number of delivery threads");
+						    "Maximum number of delivery threads");
 	
 	if (!m_managerClient->addCategory(notificationServerConfig, true))
 	{
