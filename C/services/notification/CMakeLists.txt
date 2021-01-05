@@ -87,4 +87,7 @@ set(FLEDGE_INSTALL "" CACHE INTERNAL "")
 if (FLEDGE_INSTALL)
 	message(STATUS "Installing ${PROJECT_NAME} in ${FLEDGE_INSTALL}/services")
 	install(TARGETS ${EXEC} RUNTIME DESTINATION ${FLEDGE_INSTALL}/services)
+	install(DIRECTORY DESTINATION ${FLEDGE_INSTALL}/plugins/notificationDelivery)
+	install(DIRECTORY DESTINATION ${FLEDGE_INSTALL}/plugins/notificationRule)
+
 endif()
