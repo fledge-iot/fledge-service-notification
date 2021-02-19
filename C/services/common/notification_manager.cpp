@@ -798,6 +798,7 @@ string NotificationManager::getJSONRules()
 		if (builtinRule)
 		{
 			ret += this->getPluginInfo(builtinRule->getInfo());
+
 			if (std::next(it) != m_builtinRules.end())
 			{
 				ret += ", ";
@@ -1110,8 +1111,42 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 	}
 	else
 	{
+		string plugin_type = string(info->type);
+		// Installed_directory: i.e "notificationRule/Average"
+		string installed_directory = plugin_type + "/" + info->name;
+
+		// Return "rule" or "notify" for plugin type
+		if (plugin_type == "notificationRule")
+		{
+			plugin_type = "rule";
+		}
+		if (plugin_type == "notificationDelivery")
+		{
+			plugin_type = "notify";
+		}
+
+		string package_name;
+
+		// Check for SP_BUILTIN flag
+		if (info->options & SP_BUILTIN)
+		{
+			// Set empty installation directory
+			installed_directory = "";
+		} else {
+			// Set package name
+			package_name = "fledge-" + plugin_type + "-" + info->name;
+			// Transform to lowercase
+			std::transform(package_name.begin(), package_name.end(), package_name.begin(),
+					[](unsigned char c){
+					return std::tolower(c);
+			});
+		}
+
+		// Build JSON object
 		ret += "{\"name\": \"" + string(info->name) + "\", \"version\": \"" + \
-			string(info->version) + "\", \"type\": \"" + string(info->type) + \
+			string(info->version) + "\", \"type\": \"" + plugin_type + \
+			"\", \"installedDirectory\": \"" + installed_directory + \
+			"\", \"packageName\": \"" + package_name + \
 			"\", \"interface\": \"" + string(info->interface) + \
 			"\", \"config\": " + string(info->config) + "}";
 	}

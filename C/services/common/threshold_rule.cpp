@@ -96,7 +96,7 @@ using namespace std;
 static PLUGIN_INFORMATION ruleInfo = {
 	RULE_NAME,			// Name
 	"1.0.0",			// Version
-	0,				// Flags
+	SP_BUILTIN,			// Flags
 	PLUGIN_TYPE_NOTIFICATION_RULE,	// Type
 	"1.0.0",			// Interface version
 	default_config			// Configuration
