@@ -196,12 +196,17 @@ NotificationInstance::~NotificationInstance()
  *
  * @return	A JSON string representation of the instance
  */
-string NotificationInstance::toJSON()
+string NotificationInstance::toJSON(bool showAll)
 {
 	ostringstream ret;
 
 	ret << "{\"name\": \"" << this->getName() << "\", \"enable\": ";
 	ret << (this->isEnabled() ? "true" : "false") << ", ";
+	if (showAll)
+	{
+		ret << "\"active\": ";
+		ret << (!this->isZombie() ? "true" : "false") << ", ";
+	}
 	ret << "\"type\": \"" << this->getTypeString(this->getType()) << "\", ";
 	ret << "\"rule\": \"";
 	ret << (this->getRulePlugin() ? this->getRulePlugin()->getName() : "");
@@ -372,7 +377,7 @@ void NotificationManager::addInstance(const string& instanceName,
  *
  * @return	JSON string with all loaded instances
  */
-string NotificationManager::getJSONInstances()
+string NotificationManager::getJSONInstances(bool showAll)
 {
 	// Protect changes to m_instances
 	lock_guard<mutex> guard(m_instancesMutex);
@@ -381,11 +386,21 @@ string NotificationManager::getJSONInstances()
 		  it != m_instances.end();
 		  ++it)
 	{
-		// Get instance JSON string
-		ret += (it->second)->toJSON();
-		if (std::next(it) != m_instances.end())
+		// Do not show Zombie instance
+		if (showAll == true || !it->second->isZombie())
 		{
-			ret += ", ";
+			// Get instance JSON string
+			ret += (it->second)->toJSON(showAll);
+		}
+
+		// Add ', ' separator
+		if (ret[0] != '\0' &&
+		   std::next(it) != m_instances.end())
+		{
+			if (showAll == true || !std::next(it)->second->isZombie())
+			{
+				ret += ", ";
+			}
 		}
 	}
 	return ret;
@@ -783,6 +798,7 @@ string NotificationManager::getJSONRules()
 		if (builtinRule)
 		{
 			ret += this->getPluginInfo(builtinRule->getInfo());
+
 			if (std::next(it) != m_builtinRules.end())
 			{
 				ret += ", ";
@@ -1095,8 +1111,42 @@ string NotificationManager::getPluginInfo(PLUGIN_INFORMATION* info)
 	}
 	else
 	{
+		string plugin_type = string(info->type);
+		// Installed_directory: i.e "notificationRule/Average"
+		string installed_directory = plugin_type + "/" + info->name;
+
+		// Return "rule" or "notify" for plugin type
+		if (plugin_type == "notificationRule")
+		{
+			plugin_type = "rule";
+		}
+		if (plugin_type == "notificationDelivery")
+		{
+			plugin_type = "notify";
+		}
+
+		string package_name;
+
+		// Check for SP_BUILTIN flag
+		if (info->options & SP_BUILTIN)
+		{
+			// Set empty installation directory
+			installed_directory = "";
+		} else {
+			// Set package name
+			package_name = "fledge-" + plugin_type + "-" + info->name;
+			// Transform to lowercase
+			std::transform(package_name.begin(), package_name.end(), package_name.begin(),
+					[](unsigned char c){
+					return std::tolower(c);
+			});
+		}
+
+		// Build JSON object
 		ret += "{\"name\": \"" + string(info->name) + "\", \"version\": \"" + \
-			string(info->version) + "\", \"type\": \"" + string(info->type) + \
+			string(info->version) + "\", \"type\": \"" + plugin_type + \
+			"\", \"installedDirectory\": \"" + installed_directory + \
+			"\", \"packageName\": \"" + package_name + \
 			"\", \"interface\": \"" + string(info->interface) + \
 			"\", \"config\": " + string(info->config) + "}";
 	}

@@ -438,11 +438,22 @@ void NotificationApi::getNotificationObject(NOTIFICATION_OBJECT object,
 			break;
 
 		case ObjGetNotificationsAll:
-			// Get all Notifications
+			{
+			// Get Notifications
+			auto query = request->parse_query_string();
+			auto search = query.find("all");
+
+			// Fetch active notifications
+			// GET /notification
+			//
+			// Fetch active notifications plus ones still in the zombie state
+			// GET /notification?all
+			// false parameter in getJSONInstances means: show only active notifications
 			responsePayload = "{ \"notifications\": [" + \
-					  manager->getJSONInstances()  + \
+					  manager->getJSONInstances(search != query.end())  + \
 					  "] }";
 			break;
+			}
 
 		case ObjCreateNotification:
 			{

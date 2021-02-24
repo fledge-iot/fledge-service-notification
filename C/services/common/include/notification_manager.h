@@ -188,7 +188,7 @@ class NotificationInstance
 		{
 			return (m_delivery ? m_delivery->getPlugin() : NULL);
 		};
-		std::string		toJSON();
+		std::string		toJSON(bool showAll = false);
 		bool			isEnabled() const { return m_enable; };
 		NotificationType	getType() const { return m_type; };
 		std::string		getTypeString(NotificationType type);
@@ -240,7 +240,7 @@ class NotificationManager
 		const std::string&	getName() const { return m_name; };
 		static NotificationManager*
 					getInstance();
-		std::string		getJSONInstances();
+		std::string		getJSONInstances(bool showAll = false);
 		void 			loadInstances();
 		std::map<std::string, NotificationInstance *>&
 					getInstances() { return m_instances; };
