@@ -679,7 +679,7 @@ bool NotificationInstance::handleState(bool evalRet)
 		else
 		{
 			// Try sending "triggered" when evaluation is true
-			ret = evalRet && (diffTime > nType.retriggerTime);
+			ret = evalRet && (diffTime >= nType.retriggerTime);
 			// Here state change depends on sending value
 			setTriggered = ret;
 		}
@@ -689,7 +689,7 @@ bool NotificationInstance::handleState(bool evalRet)
 		// Set state depends on evalRet
 		setTriggered = evalRet;
 		// Try sending "triggered" when evaluation is true
-		ret = evalRet && diffTime > nType.retriggerTime;
+		ret = evalRet && diffTime >= nType.retriggerTime;
 		break;
 
 	default:
