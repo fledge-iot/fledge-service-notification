@@ -1173,6 +1173,32 @@ void NotificationQueue::setSumValues(map<string, ResultData>& result,
 	}
 }
 
+/**
+ * Add the data that caused the notification to trigger to the reason
+ * document that will be sent to the notification delivery plugin.
+ *
+ * This is a bit of a cheap cheat as we don;t parse the two documents we
+ * simply use string manipulation. We can do this as these two documents
+ * are of well done formats.
+ *
+ * @param reason	The reason JSON document
+ * @param data		The data document
+ */
+static void addDataToReason(string& reason, const string& data)
+{
+	Logger::getLogger()->debug("Reason is '%s'", reason.c_str());
+	Logger::getLogger()->debug("Data is '%s'", data.c_str());
+	auto p = reason.find_last_of("}");
+	if (p != string::npos)
+	{
+		string sstr = reason.substr(0, p);
+		sstr.append(", \"data\" : ");
+		sstr.append(data);
+		sstr.append(" }");
+		Logger::getLogger()->debug("Reason becomes '%s'", sstr.c_str());
+		reason = sstr;
+	}
+}
 
 /**
  * Deliver notification data
@@ -1209,6 +1235,9 @@ static void deliverNotification(NotificationRule* rule,
 	{
 		 // Call rule "plugin_reason"
 		string reason = rule->getPlugin()->reason();
+
+		// Add the data that trigger the event to the reason document
+		addDataToReason(reason, data);
 
 		// Call delivery "plugin_deliver"
 		DeliveryPlugin* plugin = instance->getDeliveryPlugin();
