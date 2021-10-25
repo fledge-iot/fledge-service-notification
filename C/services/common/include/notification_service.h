@@ -24,11 +24,13 @@
 /**
  * The NotificationService class.
  */
-class NotificationService : public ServiceHandler
+class NotificationService : public ServiceAuthHandler
 {
 	public:
-		NotificationService(const std::string& name);
+		NotificationService(const std::string& name,
+					const std::string& token = "");
 		~NotificationService();
+		const std::string&	getName() { return m_name; };
 		bool 			start(std::string& coreAddress,
 					      unsigned short corePort);
 		void 			stop();
@@ -41,19 +43,17 @@ class NotificationService : public ServiceHandler
 					{
 						m_storage->readingAppend(reading);
 					};
-		ManagementClient*	getManagementClient() { return m_managerClient; };
 		StorageClient*		getStorageClient() { return m_storage; };
 
 	private:
-		const std::string	m_name;
 		Logger*			m_logger;
 		bool			m_shutdown;
 		NotificationApi*	m_api;
-		ManagementClient* 	m_managerClient;
 		ManagementApi*		m_managementApi;
 		StorageClient*		m_storage;
 		std::map<std::string, bool>
 					m_registerCategories;
 		unsigned long		m_delivery_threads;
+		const std::string       m_token;
 };
 #endif

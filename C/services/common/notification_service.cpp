@@ -16,7 +16,7 @@
 #include <logger.h>
 #include <iostream>
 #include <string>
-
+#include <service_handler.h>
 #include <storage_client.h>
 #include <config_handler.h>
 #include <notification_service.h>
@@ -34,10 +34,13 @@ using namespace std;
  *
  * @param    myName	The notification server name
  */
-NotificationService::NotificationService(const string& myName) :
-					 m_name(myName),
-					 m_shutdown(false)
+NotificationService::NotificationService(const string& myName,
+					 const string& token) :
+					 m_shutdown(false),
+					 m_token(token)
 {
+	m_name = myName;
+
 	// Default to a dynamic port
 	unsigned short servicePort = 0;
 
@@ -54,7 +57,7 @@ NotificationService::NotificationService(const string& myName) :
 	m_api = new NotificationApi(servicePort, threads);
 
 	// Set NULL for other resources
-	m_managerClient = NULL;
+	m_mgtClient = NULL;
 	m_managementApi = NULL;
 }
 
@@ -64,7 +67,7 @@ NotificationService::NotificationService(const string& myName) :
 NotificationService::~NotificationService()
 {
 	delete m_api;
-	delete m_managerClient;
+	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
 }
@@ -112,8 +115,8 @@ bool NotificationService::start(string& coreAddress,
 	m_api->setCallBackURL();
 
 	// Get management client
-	m_managerClient = new ManagementClient(coreAddress, corePort);
-	if (!m_managerClient)
+	m_mgtClient = new ManagementClient(coreAddress, corePort);
+	if (!m_mgtClient)
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge at " + \
@@ -126,7 +129,7 @@ bool NotificationService::start(string& coreAddress,
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
 	notificationConfig.setDescription("Notification services");
-	if (!m_managerClient->addCategory(notificationConfig, true))
+	if (!m_mgtClient->addCategory(notificationConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -150,7 +153,7 @@ bool NotificationService::start(string& coreAddress,
 	notificationServerConfig.setItemDisplayName("deliveryThreads",
 						    "Maximum number of delivery threads");
 	
-	if (!m_managerClient->addCategory(notificationServerConfig, true))
+	if (!m_mgtClient->addCategory(notificationServerConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -164,13 +167,14 @@ bool NotificationService::start(string& coreAddress,
 	unsigned short listenerPort = m_api->getListenerPort();
 	unsigned short managementListener = m_managementApi->getListenerPort();
 	ServiceRecord record(m_name,
-			     "Notification",		// Service type
+			     SERVICE_TYPE,		// Service type
 			     "http",			// Protocol
 			     "localhost",		// Listening address
 			     listenerPort,		// Service port
-			     managementListener);	// Management port
+			     managementListener,	// Management port
+			     m_token);
 
-	if (!m_managerClient->registerService(record))
+	if (!m_mgtClient->registerService(record))
 	{
 		m_logger->fatal("Unable to register service "
 				"\"Notification\" for service '" + m_name + "'");
@@ -181,13 +185,13 @@ bool NotificationService::start(string& coreAddress,
 
 	// Register NOTIFICATION_CATEGORY to Fledge Core
 	unsigned int retryCount = 0;
-	while (m_managerClient->registerCategory(NOTIFICATION_CATEGORY) == false &&
+	while (m_mgtClient->registerCategory(NOTIFICATION_CATEGORY) == false &&
 		++retryCount < 10)
 	{
 		sleep(2 * retryCount);
 	}
 	registerCategory(m_name);
-	ConfigCategory category = m_managerClient->getCategory(m_name);
+	ConfigCategory category = m_mgtClient->getCategory(m_name);
 	if (category.itemExists("logLevel"))
 	{
 		m_logger->setMinLevel(category.getValue("logLevel"));
@@ -204,7 +208,7 @@ bool NotificationService::start(string& coreAddress,
 
 	// Get Storage service
 	ServiceRecord storageInfo("Fledge Storage");
-	if (!m_managerClient->getService(storageInfo))
+	if (!m_mgtClient->getService(storageInfo))
 	{
 		m_logger->fatal("Unable to find Fledge storage "
 				"connection info for service '" + m_name + "'");
@@ -212,7 +216,7 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 
 		// Unregister from Fledge
-		m_managerClient->unregisterService();
+		m_mgtClient->unregisterService();
 
 		return false;
 	}
@@ -226,14 +230,17 @@ bool NotificationService::start(string& coreAddress,
 	m_storage = &storageClient;
 
 	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_managerClient, this);
+	NotificationManager instances(m_name, m_mgtClient, this);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
 	instances.loadInstances();
 
-	m_managerClient->addAuditEntry("NTFST",
+	m_mgtClient->addAuditEntry("NTFST",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
+
+	// Create default security category
+	this->createSecurityCategories(m_mgtClient);
 
 	// We have notitication instances loaded
 	// (1.1) Start the NotificationQueue
@@ -260,7 +267,7 @@ bool NotificationService::start(string& coreAddress,
 	// - all subscriptions already unregistered
 
 	// Unregister from storage service
-	m_managerClient->unregisterService();
+	m_mgtClient->unregisterService();
 
 	// Stop management API
 	m_managementApi->stop();
@@ -271,7 +278,7 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_managerClient->addAuditEntry("NTFSD",
+	m_mgtClient->addAuditEntry("NTFSD",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
 
@@ -340,6 +347,12 @@ void NotificationService::configChange(const string& categoryName,
 			m_logger->warn("Set log level to %s", config.getValue("logLevel").c_str());
 		}
 		return;
+	}
+
+	// Update the  Security category
+	if (categoryName.compare(m_name+"Security") == 0)
+	{
+		this->updateSecurityCategory(category);
 	}
 
 	std::size_t found;
@@ -449,7 +462,7 @@ void NotificationService::configChange(const string& categoryName,
  */
 void NotificationService::registerCategory(const string& categoryName)
 {
-	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
 	// Call registerCategory only once
 	if (configHandler &&
 	    m_registerCategories.find(categoryName) == m_registerCategories.end())
