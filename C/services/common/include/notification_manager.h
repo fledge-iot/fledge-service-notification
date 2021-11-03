@@ -113,6 +113,12 @@ class NotificationElement
 class NotificationRule : public NotificationElement
 {
 	public:
+		typedef enum MultipleEvaluation {
+			M_ALL,
+			M_ANY,
+			M_INTERVAL
+		} MULTIPLE_EVALUATION;
+
 		NotificationRule(const std::string& name,
 				 const std::string& notification,
 				 RulePlugin* plugin);
@@ -128,13 +134,22 @@ class NotificationRule : public NotificationElement
 		};
 		std::string		toJSON();
 		bool			isTimeBased() { return m_timeBased != 0; };
-		void			setTimeBased(uint64_t timeBased) { m_timeBased = timeBased; };
+		void			setTimeBased(uint64_t timeBased) {
+						m_timeBased = timeBased;
+		};
+		bool			evaluateAny() {
+						return m_multiple_evaluaion == MULTIPLE_EVALUATION::M_ANY;
+					};
+		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval) {
+						m_multiple_evaluaion = eval;
+					};
 
 	private:
 		RulePlugin*		m_plugin;
 		std::vector<NotificationDetail>
 					m_assets;
 		bool			m_timeBased;
+		MULTIPLE_EVALUATION	m_multiple_evaluaion;
 };
 
 /**
