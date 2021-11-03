@@ -37,7 +37,8 @@ class EvaluationType
 			All,
 			Average,
 			Minimum,
-			Maximum
+			Maximum,
+			Interval
 		} EVAL_TYPE;
 
 		EvaluationType(EVAL_TYPE type, time_t interval)
@@ -51,7 +52,7 @@ class EvaluationType
 		time_t			getInterval() const { return m_interval; };
 
 	private:
-		EVAL_TYPE		m_type;
+		EVAL_TYPE	m_type;
 		time_t		m_interval;
 		
 };
@@ -107,6 +108,7 @@ class NotificationElement
  * @param    notification	The Notification instance name.
  * @param    plugin		The Notification rule, builtin or
  *				a dynamically loaded plugin.
+ * @param    timeBased		Optional parameter for time based rule
  */
 class NotificationRule : public NotificationElement
 {
@@ -125,11 +127,14 @@ class NotificationRule : public NotificationElement
 			m_assets.push_back(info);
 		};
 		std::string		toJSON();
+		bool			isTimeBased() { return m_timeBased != 0; };
+		void			setTimeBased(uint64_t timeBased) { m_timeBased = timeBased; };
 
 	private:
 		RulePlugin*		m_plugin;
 		std::vector<NotificationDetail>
 					m_assets;
+		bool			m_timeBased;
 };
 
 /**

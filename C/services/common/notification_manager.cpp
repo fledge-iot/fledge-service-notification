@@ -99,6 +99,7 @@ NotificationRule::NotificationRule(const std::string& name,
 				   NotificationElement(name, notification),
 				   m_plugin(plugin)
 {
+	m_timeBased = 0;
 }
 
 /**
