@@ -24,6 +24,8 @@
 #include <notification_queue.h>
 #include <delivery_queue.h>
 
+#define TIMEBASE_SLEEP_INTERVAL 100 // milliseconds
+
 using namespace std;
 
 NotificationQueue* NotificationQueue::m_instance = 0;
@@ -1786,6 +1788,7 @@ void NotificationQueue::processTime()
 		// Lock needed
 		manager->collectZombies();
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(100));
+		// TODO: add a configuration option for the value
+		std::this_thread::sleep_for(std::chrono::milliseconds(TIMEBASE_SLEEP_INTERVAL));
 	}
 }
