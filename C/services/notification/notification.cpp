@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 	bool	       daemonMode = true;
 	string	       myName = SERVICE_NAME;
 	string	       logLevel = "warning";
+	string         token = "";
 
 	signal(SIGSEGV, handler);
 	signal(SIGILL, handler);
@@ -89,6 +90,10 @@ int main(int argc, char *argv[])
 		else if (!strncmp(argv[i], "--logLevel=", 11))
 		{
 			logLevel = &argv[i][11];
+		}
+		else if (!strncmp(argv[i], "--token=", 8))
+		{
+			token = &argv[i][8];
 		}
 	}
 
