@@ -225,6 +225,11 @@ EvaluationType NotificationSubscription::getEvalType(const Value& value)
 		interval = value["Maximum"].GetUint();
 		evaluation = EvaluationType::Maximum;
 	}
+	else if (value.HasMember("Interval"))
+	{
+		interval = value["Interval"].GetInt64();
+		evaluation = EvaluationType::Interval;
+	}
 
 	return EvaluationType(evaluation, interval);
 }
@@ -303,23 +308,44 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				       rulePluginInstance->getName().c_str());
 
 		string ruleName = instance->getRule()->getName();
+		NotificationRule* theRule = instance->getRule();
+		uint64_t timeBasedInterval = 0;
+
+		// Get "interval" parameter first
+		if (JSONData.HasMember("interval"))
+		{
+			timeBasedInterval = JSONData["interval"].GetUint64();
+			theRule->setTimeBased(timeBasedInterval);
+			m_logger->debug("Setting time based rule %s with interval %ld",
+				ruleName.c_str(),
+				timeBasedInterval);
+
+		}
+
+		// Get "asset" objects
 		for (Value::ConstValueIterator itr = triggers.Begin();
 					       itr != triggers.End();
 					       ++itr)
 		{
 			// Get asset name
 			string asset = (*itr)["asset"].GetString();
-		 	// Get evaluation type and time period
-			EvaluationType type = this->getEvalType((*itr));
+
+	 		// Get optional evaluation type and time period for asset:
+			// (All :30, Minimum: 10, Maximum: 10, Average: 10)
+			// If time based rule is set then
+			// set EvaluationType::Interval for data buffer operation
+			EvaluationType type = theRule->isTimeBased() ?
+				EvaluationType(EvaluationType::Interval, timeBasedInterval) :
+				this->getEvalType(*itr);
+
 			// Create NotificationDetail object
 			NotificationDetail assetInfo(asset,
 						     ruleName,
 						     type);
 
 			// Add assetInfo to its rule
-			NotificationRule* theRule = instance->getRule();
 			theRule->addAsset(assetInfo);
- 
+
 			// Create subscription object
 			SubscriptionElement subscription(asset,
 							 instance->getName(),

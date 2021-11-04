@@ -24,18 +24,30 @@
 #include <notification_queue.h>
 #include <delivery_queue.h>
 
+#define TIMEBASE_SLEEP_INTERVAL 100 // milliseconds
+
 using namespace std;
 
 NotificationQueue* NotificationQueue::m_instance = 0;
 
 /**
- * Process queue worker thread entry point
+ * Process data queue worker thread entry point
  *
  * @param    queue	Pointer to NotificationQueue instance
  */
-static void worker(NotificationQueue* queue)
+static void workerData(NotificationQueue* queue)
 {
-	queue->process();
+	queue->processData();
+}
+
+/**
+ * Process time data worker thread entry point
+ *
+ * @param    queue	Pointer to NotificationQueue instance
+ */
+static void workerTime(NotificationQueue* queue)
+{
+	queue->processTime();
 }
 
 static void addReadyData(const map<string, string>& readyData,
@@ -132,7 +144,9 @@ NotificationQueue::NotificationQueue(const string& notificationName) :
 	// Set instance
 	m_instance = this;
 	// Start process queue thread
-	m_queue_thread = new thread(worker, this);
+	m_queue_thread = new thread(workerData, this);
+	// Start process time based rules thread
+	m_time_thread = new thread(workerTime, this);
 
 	// Get logger
 	m_logger = Logger::getLogger();
@@ -144,6 +158,7 @@ NotificationQueue::NotificationQueue(const string& notificationName) :
 NotificationQueue::~NotificationQueue()
 {
 	delete m_queue_thread;
+	delete m_time_thread;
 }
 
 /**
@@ -158,6 +173,9 @@ void NotificationQueue::stop()
 
 	// Waiting for the process thread to complete
 	m_queue_thread->join();
+
+	// Waiting for the time process thread to complete
+	m_time_thread->join();
 
 	// NotifictionQueue is empty now: clear all remaining data
 
@@ -247,7 +265,7 @@ bool NotificationQueue::addElement(NotificationQueueElement* element)
 /**
  * Process data in the queue
  */
-void NotificationQueue::process()
+void NotificationQueue::processData()
 {
 	bool doProcess = true;
 
@@ -297,8 +315,8 @@ void NotificationQueue::process()
 	}
 
 #ifdef QUEUE_DEBUG_DATA
-		m_logger->debug("Queue stopped: size %ld elments",
-				m_queue.size());
+	m_logger->debug("Queue stopped: size %ld elments",
+			m_queue.size());
 #endif
 }
 
@@ -600,7 +618,8 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		  mm != results.end();
 		  ++mm)
 	{
-		if ((*mm).second.type != EvaluationType::EVAL_TYPE::SingleItem)
+		if ((*mm).second.type != EvaluationType::EVAL_TYPE::SingleItem &&
+		    (*mm).second.type != EvaluationType::EVAL_TYPE::Interval)
 		{
 			// Set output string
 			JSONOutput[(*mm).first] = (*mm).second.sData;
@@ -646,7 +665,7 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 	// Clean all buffers for SingleItem data
 	// NOTE:
 	// for other evaluation types we have already removed
-	// the right number of buffers after creating srtring data
+	// the right number of buffers after creating string data
 	for (auto mm = results.begin();
 		  mm != results.end();
 		  ++mm)
@@ -715,6 +734,12 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 						   assetName.c_str(),
 						   (*it).getNotificationName().c_str());
 			// Skip this instance
+			continue;
+		}
+
+		// If interval skip process
+		if (instance->getRule()->isTimeBased())
+		{
 			continue;
 		}
 
@@ -795,6 +820,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 	switch(info.getType())
 	{
 	case EvaluationType::SingleItem:
+	case EvaluationType::Interval:
 		results[assetName].type = info.getType();
 		// Add all Reading data
 		this->setSingleItemData(readingsData, results);
@@ -928,6 +954,8 @@ string NotificationQueue::processLastBuffer(NotificationDataElement* data)
 		this->keepBufferData(data->getRuleName(),
 				     data->getAssetName(),
 				     1);
+		this->clearBufferData(data->getRuleName(),
+					 data->getAssetName());
 
 		return ret;
 	}
@@ -1058,6 +1086,9 @@ void NotificationQueue::setValue(map<string, ResultData>& result,
 				break;
 			case EvaluationType::Average:
 				setSumValues(result, key, val);
+				break;
+			case EvaluationType::Interval:
+				setLatestValue(result, key, val);
 				break;
 			default:
 				break;
@@ -1216,7 +1247,7 @@ static void addDataToReason(string& reason, const string& data)
 static void deliverNotification(NotificationRule* rule,
 				const string& data)
 {
-	// Eval notification data via ruel "plugin_eval"
+	// Eval notification data via rule "plugin_eval"
 	bool evalRule = rule->getPlugin()->eval(data);
 
 	// Get instances
@@ -1363,7 +1394,7 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 				}
 				else
 				{
-					// Set MIN or MAX or SUM
+					// Set MIN or MAX or SUM (for average) or LATEST (for interval)
 					this->setValue(result, *d, type);
 				}
 			} // End of datapoints
@@ -1453,7 +1484,6 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 void NotificationQueue::setSingleItemData(vector<NotificationDataElement *>& readingsData,
 					  map<string, AssetData>& results)
 {
-
 	for (auto item = readingsData.begin();
 		  item != readingsData.end();
 		   ++item)
@@ -1587,5 +1617,178 @@ static void deliverData(NotificationRule* rule,
 		{
 			deliverNotification(rule, output);
 		}
+	}
+}
+
+/**
+ * Set Latest value in output result map
+ *
+ * @param    result		Output map with current result values
+ * @param    key		Datapoint name
+ * @param    val		Input datapoint value.
+ */
+void NotificationQueue::setLatestValue(map<string, ResultData>& result,
+				    const string& key,
+				    DatapointValue& val)
+{
+
+	// Set the DatapointValue value
+	result[key].vData[0]->getData() = val;
+}
+
+/**
+ * Process data for time based rules
+ */
+void NotificationQueue::processTime()
+{
+	bool doProcess = true;
+	typedef struct {
+		uint64_t curr;
+		uint64_t last;
+	} rTimers;
+	map<string, rTimers> ruleTimers;
+
+	Logger::getLogger()->debug("Time based rule thread started");
+	while (doProcess)
+	{
+
+		if (!m_running)
+	        {
+			Logger::getLogger()->debug("Time based rule thread stopped");
+			doProcess = false;
+			break;
+		}
+
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		uint64_t currTime = tv.tv_sec * 1000 + tv.tv_usec / 1000;
+		// Get NotificationManager instance
+		NotificationManager* manager = NotificationManager::getInstance();
+		if (!manager) {
+			std::this_thread::sleep_for(std::chrono::seconds(5));
+			continue;
+		}
+
+		// Get all Notification instances
+		manager->lockInstances();
+		std::map<std::string, NotificationInstance *>& instances = manager->getInstances();
+		manager->unlockInstances();
+
+		// Iterate trough instances
+		for (auto it = instances.begin();
+			it != instances.end();
+			++it)
+		{
+			string instanceName = it->first;
+			rTimers data;
+			auto irt = ruleTimers.find(instanceName);
+			if (irt == ruleTimers.end())
+			{
+				data.curr = currTime;
+				data.last = currTime;
+			}
+			else
+			{
+				data = irt->second;
+				data.curr = currTime;
+			}
+
+			lock_guard<mutex> guard(manager->m_instancesMutex);
+
+			// Per asset notification map
+			map<string, AssetData> results;
+
+			// Get instance pointer
+			NotificationInstance* instance = it->second;
+
+			// Check wether the instance exists and it is enabled
+			// and it's a time based rule
+			if (!instance ||
+			    !instance->getRule() ||
+			    !instance->isEnabled())
+			{
+				Logger::getLogger()->debug("Skipping notification %s",
+					   instanceName.c_str());
+				// Skip this instance
+				continue;
+			}
+
+			if (!instance->getRule()->isTimeBased())
+			{
+				// Skip this instance
+				continue;
+			}
+
+			// Get ruleName for the assetName
+			string ruleName = instance->getRule()->getName();
+
+			// Get all assests belonging to current rule
+			vector<NotificationDetail>& assets = instance->getRule()->getAssets();
+
+			long timeBasedInterval = 0;
+			// Iterate trough assets
+			for (auto itr = assets.begin();
+				  itr != assets.end();
+				  ++itr)
+			{
+				timeBasedInterval = (*itr).getInterval();
+
+				// Process data buffer and fill results
+				this->processDataBuffer(results,
+							ruleName,
+							(*itr).getAssetName(),
+							*itr);
+
+				// Add "_interval" reading with current time as datapoint
+				{
+					DatapointValue dV((float)data.curr / 1000);
+					Reading *reading = new Reading(string("_interval"),
+								new Datapoint("timestamp", dV));
+					results[(*itr).getAssetName()].rData.push_back(reading);
+				}
+			}
+
+			// Eval rule?
+			uint64_t timeDiff = data.curr - data.last;
+			if (timeDiff >= timeBasedInterval)
+			{
+				data.last = currTime;
+				Logger::getLogger()->error("===> Evaluating rule %s, results %d",
+						instanceName.c_str(),
+						results.size());
+				Logger::getLogger()->error("===> Evaluating rule %s, diff %ld, curr %ld, last %ld",
+						instanceName.c_str(),
+						timeDiff,
+						data.curr,
+						data.last);
+
+				// Notification data ready: eval data and sent notification
+				this->evalRule(results, instance->getRule());
+			}
+
+			// Add / update curr time
+			ruleTimers[instanceName] = data;
+
+			// Iterate trough assets
+			lock_guard<mutex> b_guard(m_bufferMutex);
+			for (auto itr = assets.begin();
+				  itr != assets.end();
+				  ++itr)
+			{
+				this->clearBufferData(ruleName,
+						(*itr).getAssetName());
+			}
+		}
+
+		/*
+		 * Now collect all pending deletes of notification instances
+		 * and really delete them. We defer this until we know we are not
+		 * processing any of the noptifications.
+		 */
+		// Lock needed
+		manager->collectZombies();
+
+		// TODO: add a configuration option for the value
+		std::this_thread::sleep_for(std::chrono::milliseconds(TIMEBASE_SLEEP_INTERVAL));
 	}
 }

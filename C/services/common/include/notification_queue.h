@@ -61,14 +61,17 @@ class NotificationQueueElement
 						time_t now = time(0);
 						if (now - m_qTime > 5)
 						{
-							Logger::getLogger()->info("Notification data queued for %d seconds", now - m_qTime);
+							Logger::getLogger()->info("Notification data queued for %d seconds",
+										now - m_qTime);
 						}
 						if (m_readings->getCount() > 0)
 						{
 							time_t readingT = (*m_readings)[0]->getUserTimestamp();
 							if (now - readingT > 10)
 							{
-								Logger::getLogger()->info("Notification data oldest reading is %d seconds old", now - readingT);
+								Logger::getLogger()->info("Notification data oldest reading " \
+										"is %d seconds old",
+										now - readingT);
 							}
 						}
 					};
@@ -95,7 +98,8 @@ class NotificationQueue
 					getInstance() { return m_instance; };
 		const std::string&	getName() const { return m_name; };
 		bool			addElement(NotificationQueueElement* element);
-		void			process();
+		void			processData();
+		void			processTime();
 		bool			isRunning() const { return m_running; };
 		void			stop();
 		void			clearBufferData(const std::string& ruleName,
@@ -142,6 +146,9 @@ class NotificationQueue
 		void			setSumValues(std::map<std::string, ResultData>& result,
 						    const std::string& key,
 						    DatapointValue& val);
+		void			setLatestValue(std::map<std::string, ResultData>& result,
+						    const std::string& key,
+						    DatapointValue& val);
 		void			aggregateData(std::vector<NotificationDataElement *>& readingsData,
 						      unsigned long size,
 						      EvaluationType::EVAL_TYPE type,
@@ -183,6 +190,7 @@ class NotificationQueue
 					m_instance;
 		bool			m_running;
 		std::thread*		m_queue_thread;
+		std::thread*		m_time_thread;
 		std::mutex		m_qMutex;
 		std::condition_variable	m_processCv;
 		// Queue for received notifications
