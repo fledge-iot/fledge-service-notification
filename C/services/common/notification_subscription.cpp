@@ -225,11 +225,6 @@ EvaluationType NotificationSubscription::getEvalType(const Value& value)
 		interval = value["Maximum"].GetUint();
 		evaluation = EvaluationType::Maximum;
 	}
-	else if (value.HasMember("Interval"))
-	{
-		interval = value["Interval"].GetInt64();
-		evaluation = EvaluationType::Interval;
-	}
 
 	return EvaluationType(evaluation, interval);
 }
@@ -304,8 +299,9 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				       rulePluginInstance->getName().c_str());
 			return false;
 		}
-		m_logger->info("Triggers set for %s plugin",
-				       rulePluginInstance->getName().c_str());
+		m_logger->info("Triggers set for %s rule plugin: %s",
+				       rulePluginInstance->getName().c_str(),
+				       document.c_str());
 
 		string ruleName = instance->getRule()->getName();
 		NotificationRule* theRule = instance->getRule();
@@ -315,11 +311,27 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 		if (JSONData.HasMember("interval"))
 		{
 			timeBasedInterval = JSONData["interval"].GetUint64();
-			theRule->setTimeBased(timeBasedInterval);
-			m_logger->debug("Setting time based rule %s with interval %ld",
-				ruleName.c_str(),
-				timeBasedInterval);
+			if (timeBasedInterval > 0)
+			{
+				theRule->setTimeBased(timeBasedInterval);
+				m_logger->debug("Setting time based rule %s with interval %ld",
+					ruleName.c_str(),
+					timeBasedInterval);
+			}
+		}
 
+		// Get "evaluate" parameter for Multiple Trigger Evaluation Control
+		if (JSONData.HasMember("evaluate"))
+		{
+			string value = JSONData["evaluate"].GetString();
+			if (value == "any")
+			{
+				theRule->setMultipleEvaluation(NotificationRule::MultipleEvaluation::M_ANY);
+			}
+			if (value == "interval" && timeBasedInterval > 0)
+			{
+				theRule->setMultipleEvaluation(NotificationRule::MultipleEvaluation::M_INTERVAL);
+			}
 		}
 
 		// Get "asset" objects

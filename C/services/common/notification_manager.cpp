@@ -100,6 +100,7 @@ NotificationRule::NotificationRule(const std::string& name,
 				   m_plugin(plugin)
 {
 	m_timeBased = 0;
+	m_multiple_evaluaion = MultipleEvaluation::M_ALL;
 }
 
 /**

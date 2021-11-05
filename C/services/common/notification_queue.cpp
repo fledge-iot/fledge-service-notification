@@ -737,8 +737,10 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 			continue;
 		}
 
-		// If interval skip process
-		if (instance->getRule()->isTimeBased())
+		// If interval and rule multiple assets evalution
+		// is not MultipleEvaluation::M_ANY, then skip process
+		if (instance->getRule()->isTimeBased() &&
+		    !instance->getRule()->evaluateAny())
 		{
 			continue;
 		}
@@ -761,8 +763,10 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 						*itr);
 		}
 
-		// Eval rule?
-		if (results.size() == assets.size())
+		// Eval rule? We have all assets data or at least one, given the
+		// rule multiple evaluation value set to MultipleEvaluation::M_ANY
+		if (results.size() == assets.size() ||
+		    (results.size() > 0 && instance->getRule()->evaluateAny()))
 		{
 			// Notification data ready: eval data and sent notification
 			this->sendNotification(results, *it);
@@ -1394,7 +1398,7 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 				}
 				else
 				{
-					// Set MIN or MAX or SUM (for average) or LATEST (for interval)
+					// Set MIN or MAX or SUM (for average)
 					this->setValue(result, *d, type);
 				}
 			} // End of datapoints
@@ -1739,12 +1743,17 @@ void NotificationQueue::processTime()
 							(*itr).getAssetName(),
 							*itr);
 
-				// Add "_interval" reading with current time as datapoint
+				// Add "_interval" reading
 				{
-					DatapointValue dV((float)data.curr / 1000);
-					Reading *reading = new Reading(string("_interval"),
-								new Datapoint("timestamp", dV));
+					DatapointValue dpV("Time based rule evaluation");
+					Datapoint *d = new Datapoint("evaluation", dpV);
+					Reading *reading = new Reading(string("_interval"), d);
+
+					// Add new reading
+					// with "_interval" reading object
+					// and buffer type EVAL_TYPE::Interval
 					results[(*itr).getAssetName()].rData.push_back(reading);
+					results[(*itr).getAssetName()].type = EvaluationType::EVAL_TYPE::Interval;
 				}
 			}
 
