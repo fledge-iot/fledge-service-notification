@@ -739,7 +739,8 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 
 		// If interval and rule multiple assets evalution
 		// is not MultipleEvaluation::M_ANY, then skip process
-		if (instance->getRule()->isTimeBased() && !instance->getRule()->evaluateAny())
+		if (instance->getRule()->isTimeBased() &&
+		    !instance->getRule()->evaluateAny())
 		{
 			continue;
 		}
@@ -1742,12 +1743,17 @@ void NotificationQueue::processTime()
 							(*itr).getAssetName(),
 							*itr);
 
-				// Add "_interval" reading with current time as datapoint
+				// Add "_interval" reading
 				{
-					DatapointValue dV((float)data.curr / 1000);
-					Reading *reading = new Reading(string("_interval"),
-								new Datapoint("timestamp", dV));
+					DatapointValue dpV("Time based rule evaluation");
+					Datapoint *d = new Datapoint("evaluation", dpV);
+					Reading *reading = new Reading(string("_interval"), d);
+
+					// Add new reading
+					// with "_interval" reading object
+					// and buffer type EVAL_TYPE::Interval
 					results[(*itr).getAssetName()].rData.push_back(reading);
+					results[(*itr).getAssetName()].type = EvaluationType::EVAL_TYPE::Interval;
 				}
 			}
 
