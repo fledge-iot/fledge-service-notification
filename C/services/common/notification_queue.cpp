@@ -25,6 +25,7 @@
 #include <delivery_queue.h>
 
 #define TIMEBASE_SLEEP_INTERVAL 100 // milliseconds
+#define DEFAULT_TIMEBASE_INTERVAL 5000 // milliseconds
 
 using namespace std;
 
@@ -879,7 +880,12 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 			content += " }";
 
 			// Add timestamp_assetName with reading timestamp
-			content += ", \"timestamp_" + assetName + "\" : " + to_string(tm.tv_sec) + "." + to_string(tm.tv_usec);
+			char tmpbuf[7];
+			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
+
+			content += ", \"timestamp_" + assetName + "\" : " +
+				to_string(tm.tv_sec) + "." +
+				string(tmpbuf);
  
 			// Set result
 			results[assetName].type = info.getType();
@@ -907,62 +913,6 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 
 	// Return evaluation result
 	return evalRule;
-}
-
-/**
- * Process the last data buffer and return
- * a JSON string with all datapoints of the last
- * Reading in the ReadingSet
- *
- * @param    data	The last buffer data content
- * @return		JSON string with readings data
- */
-string NotificationQueue::processLastBuffer(NotificationDataElement* data)
-{
-	string output;
-	if (!data || !data->getData())
-	{
-		return output;
-	}
-
-	// Get vector of Reading from ReadingSet
-	ReadingSet* dataSet = data->getData();
-        const std::vector<Reading *>& readings = dataSet->getAllReadings();
-
-	if (!readings.size())
-	{
-		return output;
-	}
-	else
-	{
-		string ret ="{ ";
-
-		// Get the last Reading in the set
-		std::vector<Datapoint *>& dataPoints = readings.back()->getReadingData();
-
-		// Create a JSON string with all datapoints
-		for (auto d = dataPoints.begin();
-			  d != dataPoints.end();
-			  ++d)
-		{
-			if (d != dataPoints.begin())
-			{
-				ret += ", ";
-			}
-			ret += (*d)->toJSONProperty();
-		}
-		ret += " }";
-
-		// Just keep last buffer
-		lock_guard<mutex> guard(m_bufferMutex);
-		this->keepBufferData(data->getRuleName(),
-				     data->getAssetName(),
-				     1);
-		this->clearBufferData(data->getRuleName(),
-					 data->getAssetName());
-
-		return ret;
-	}
 }
 
 /**
@@ -1090,9 +1040,6 @@ void NotificationQueue::setValue(map<string, ResultData>& result,
 				break;
 			case EvaluationType::Average:
 				setSumValues(result, key, val);
-				break;
-			case EvaluationType::Interval:
-				setLatestValue(result, key, val);
 				break;
 			default:
 				break;
@@ -1586,7 +1533,11 @@ static void deliverData(NotificationRule* rule,
 			struct timeval tm;
 			(*eq).second->getTimestamp(&tm);
 			// Add timestamp_assetName with reading timestamp
-			assetValue += ", \"timestamp_" + assetName + "\" : " + to_string(tm.tv_sec) + "." + to_string(tm.tv_usec);
+			char tmpbuf[7];
+			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
+			assetValue += ", \"timestamp_" + assetName + "\" : " +
+				to_string(tm.tv_sec) + "." +
+				string(tmpbuf);
 
 			// Save asset value:
 			// if assetName is not found in next point in time
@@ -1729,47 +1680,43 @@ void NotificationQueue::processTime()
 			// Get all assests belonging to current rule
 			vector<NotificationDetail>& assets = instance->getRule()->getAssets();
 
-			long timeBasedInterval = 0;
-			// Iterate trough assets
-			for (auto itr = assets.begin();
-				  itr != assets.end();
-				  ++itr)
+			// Get time based interval from first asset info
+			long timeBasedInterval = assets[0].getInterval() > 0 ?
+						assets[0].getInterval() :
+						DEFAULT_TIMEBASE_INTERVAL;
+
+			// Eval time based rule?
+			uint64_t timeDiff = data.curr - data.last;
+
+			// Set evaluation state
+			bool evaluated = timeDiff >= timeBasedInterval;
+		
+			if (evaluated)
 			{
-				timeBasedInterval = (*itr).getInterval();
-
-				// Process data buffer and fill results
-				this->processDataBuffer(results,
-							ruleName,
-							(*itr).getAssetName(),
-							*itr);
-
-				// Add "_interval" reading
+				// Iterate trough assets
+				for (auto itr = assets.begin();
+					  itr != assets.end();
+					  ++itr)
 				{
+					// Process data buffer and fill results
+					this->processDataBuffer(results,
+								ruleName,
+								(*itr).getAssetName(),
+								*itr);
+
+					// Add new reading
+					// with "_interval" reading object
 					DatapointValue dpV("Time based rule evaluation");
 					Datapoint *d = new Datapoint("evaluation", dpV);
 					Reading *reading = new Reading(string("_interval"), d);
 
-					// Add new reading
-					// with "_interval" reading object
-					// and buffer type EVAL_TYPE::Interval
+					// Set buffer type EVAL_TYPE::Interval
 					results[(*itr).getAssetName()].rData.push_back(reading);
 					results[(*itr).getAssetName()].type = EvaluationType::EVAL_TYPE::Interval;
 				}
-			}
 
-			// Eval rule?
-			uint64_t timeDiff = data.curr - data.last;
-			if (timeDiff >= timeBasedInterval)
-			{
+				// Set last time as current time
 				data.last = currTime;
-				Logger::getLogger()->error("===> Evaluating rule %s, results %d",
-						instanceName.c_str(),
-						results.size());
-				Logger::getLogger()->error("===> Evaluating rule %s, diff %ld, curr %ld, last %ld",
-						instanceName.c_str(),
-						timeDiff,
-						data.curr,
-						data.last);
 
 				// Notification data ready: eval data and sent notification
 				this->evalRule(results, instance->getRule());
@@ -1778,14 +1725,25 @@ void NotificationQueue::processTime()
 			// Add / update curr time
 			ruleTimers[instanceName] = data;
 
-			// Iterate trough assets
+			// Iterate trough assets and remove or keep data buffers
 			lock_guard<mutex> b_guard(m_bufferMutex);
 			for (auto itr = assets.begin();
 				  itr != assets.end();
 				  ++itr)
 			{
-				this->clearBufferData(ruleName,
+				if (evaluated)
+				{
+					// Time based rule evaluated: remove all buffers
+					this->clearBufferData(ruleName,
 						(*itr).getAssetName());
+				}
+				else
+				{
+					// Time based rule not evaluated yet, keep last fuffer
+					this->keepBufferData(ruleName,
+						(*itr).getAssetName(),
+						1);
+				}
 			}
 		}
 
