@@ -883,7 +883,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
 			content += ", \"timestamp_" + assetName + "\" : " +
 				to_string(tm.tv_sec) +
-				"." + string(tmpbuf);;
+				"." + string(tmpbuf);
  
 			// Set result
 			results[assetName].type = info.getType();
@@ -1594,7 +1594,7 @@ static void deliverData(NotificationRule* rule,
 			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
 			assetValue += ", \"timestamp_" + assetName + "\" : " +
 				to_string(tm.tv_sec) +
-				"." + string(tmpbuf));
+				"." + string(tmpbuf);
 
 			// Save asset value:
 			// if assetName is not found in next point in time
