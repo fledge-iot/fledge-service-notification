@@ -127,7 +127,6 @@ class NotificationQueue
 							   std::map<std::string, AssetData>& results);
 		void			evalRule(std::map<std::string, AssetData>& results,
 						 NotificationRule* rule);
-		std::string		processLastBuffer(NotificationDataElement* data);
 		void			sendNotification(std::map<std::string, AssetData>& results,
 							 SubscriptionElement& subscription);
 		void			processAllBuffers(std::vector<NotificationDataElement *>& readingsData,
