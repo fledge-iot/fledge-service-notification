@@ -1600,8 +1600,12 @@ void NotificationQueue::processTime()
 	typedef struct {
 		uint64_t curr;
 		uint64_t last;
+		unsigned long interval;
 	} rTimers;
 	map<string, rTimers> ruleTimers;
+
+	// Thread sleep time to set at run time
+	unsigned long timeBasedRuleSleepTime = 0;
 
 	Logger::getLogger()->debug("Time based rule thread started");
 	while (doProcess)
@@ -1628,6 +1632,8 @@ void NotificationQueue::processTime()
 		manager->lockInstances();
 		std::map<std::string, NotificationInstance *>& instances = manager->getInstances();
 		manager->unlockInstances();
+
+		unsigned long numTimeBasedInstances = 0;
 
 		// Iterate trough instances
 		for (auto it = instances.begin();
@@ -1664,6 +1670,14 @@ void NotificationQueue::processTime()
 			{
 				Logger::getLogger()->debug("Skipping notification %s",
 					   instanceName.c_str());
+
+				// Instance data and timers found
+				// but instance object not available or not actve:
+				// remove it from map
+				if (irt != ruleTimers.end())
+				{
+					ruleTimers.erase(irt);
+				}
 				// Skip this instance
 				continue;
 			}
@@ -1674,6 +1688,8 @@ void NotificationQueue::processTime()
 				continue;
 			}
 
+			numTimeBasedInstances++;
+
 			// Get ruleName for the assetName
 			string ruleName = instance->getRule()->getName();
 
@@ -1681,7 +1697,7 @@ void NotificationQueue::processTime()
 			vector<NotificationDetail>& assets = instance->getRule()->getAssets();
 
 			// Get time based interval from first asset info
-			long timeBasedInterval = assets[0].getInterval() > 0 ?
+			unsigned long timeBasedInterval = assets[0].getInterval() > 0 ?
 						assets[0].getInterval() :
 						DEFAULT_TIMEBASE_INTERVAL;
 
@@ -1722,7 +1738,9 @@ void NotificationQueue::processTime()
 				this->evalRule(results, instance->getRule());
 			}
 
-			// Add / update curr time
+			// Add / update curr time, last time and interval
+			data.interval = timeBasedInterval;
+
 			ruleTimers[instanceName] = data;
 
 			// Iterate trough assets and remove or keep data buffers
@@ -1755,7 +1773,38 @@ void NotificationQueue::processTime()
 		// Lock needed
 		manager->collectZombies();
 
-		// TODO: add a configuration option for the value
-		std::this_thread::sleep_for(std::chrono::milliseconds(TIMEBASE_SLEEP_INTERVAL));
+		// Set thread sleep time accordingly to number of time based rules
+		// and found minimun interval
+		if (numTimeBasedInstances)
+		{
+			// Get first instance time interval
+			timeBasedRuleSleepTime = (ruleTimers.begin()->second).interval / 2;
+
+			// Set the minimum value of timeBasedRuleSleepTime
+			for (auto it = std::next(ruleTimers.begin(), 1);
+				  it != ruleTimers.end();
+				  ++it)
+			{
+
+				if (((it->second).interval / 2) < timeBasedRuleSleepTime)
+				{
+					timeBasedRuleSleepTime = (it->second).interval / 2;
+				}
+			}
+
+			// Do not go below TIMEBASE_SLEEP_INTERVAL minimum value
+			timeBasedRuleSleepTime = (timeBasedRuleSleepTime < TIMEBASE_SLEEP_INTERVAL) ?
+				TIMEBASE_SLEEP_INTERVAL :
+				timeBasedRuleSleepTime;
+		}
+
+		// If timeBasedRuleSleepTime is not set, use the default value
+		if (!timeBasedRuleSleepTime)
+		{
+			// Just use a default value
+			timeBasedRuleSleepTime = DEFAULT_TIMEBASE_INTERVAL;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(timeBasedRuleSleepTime));
 	}
 }
