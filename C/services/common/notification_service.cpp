@@ -33,9 +33,11 @@ using namespace std;
  * This class handles all Notification server components.
  *
  * @param    myName	The notification server name
+ * @param    token	The satrtup token passed at startup time by core server
  */
 NotificationService::NotificationService(const string& myName,
 					 const string& token) :
+					 m_name(myName),
 					 m_shutdown(false),
 					 m_token(token)
 {
@@ -172,7 +174,7 @@ bool NotificationService::start(string& coreAddress,
 			     "localhost",		// Listening address
 			     listenerPort,		// Service port
 			     managementListener,	// Management port
-			     m_token);
+			     m_token);			// Startup token
 
 	if (!m_mgtClient->registerService(record))
 	{

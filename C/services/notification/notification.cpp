@@ -111,7 +111,7 @@ int main(int argc, char *argv[])
 	std::signal(SIGTERM, signalHandler);
 
 	// Instantiate the NotificationService class
-	service = new NotificationService(myName);
+	service = new NotificationService(myName, token);
 	Logger::getLogger()->setMinLevel(logLevel);
 
 	// Start the Notification service

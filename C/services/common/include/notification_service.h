@@ -28,7 +28,7 @@ class NotificationService : public ServiceAuthHandler
 {
 	public:
 		NotificationService(const std::string& name,
-					const std::string& token = "");
+				const std::string& token = "");
 		~NotificationService();
 		const std::string&	getName() { return m_name; };
 		bool 			start(std::string& coreAddress,
@@ -48,12 +48,12 @@ class NotificationService : public ServiceAuthHandler
 	private:
 		Logger*			m_logger;
 		bool			m_shutdown;
-		NotificationApi*	m_api;
-		ManagementApi*		m_managementApi;
-		StorageClient*		m_storage;
+		NotificationApi*  m_api;
+		ManagementApi*    m_managementApi;
+		StorageClient*    m_storage;
 		std::map<std::string, bool>
 					m_registerCategories;
-		unsigned long		m_delivery_threads;
-		const std::string       m_token;
+		unsigned long     m_delivery_threads;
+		const std::string m_token;
 };
 #endif
