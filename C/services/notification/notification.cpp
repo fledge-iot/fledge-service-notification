@@ -61,6 +61,7 @@ int main(int argc, char *argv[])
 	bool	       daemonMode = true;
 	string	       myName = SERVICE_NAME;
 	string	       logLevel = "warning";
+	string         token = "";
 
 	signal(SIGSEGV, handler);
 	signal(SIGILL, handler);
@@ -90,6 +91,10 @@ int main(int argc, char *argv[])
 		{
 			logLevel = &argv[i][11];
 		}
+		else if (!strncmp(argv[i], "--token=", 8))
+		{
+			token = &argv[i][8];
+		}
 	}
 
 	if (daemonMode && makeDaemon() == -1)
@@ -106,7 +111,7 @@ int main(int argc, char *argv[])
 	std::signal(SIGTERM, signalHandler);
 
 	// Instantiate the NotificationService class
-	service = new NotificationService(myName);
+	service = new NotificationService(myName, token);
 	Logger::getLogger()->setMinLevel(logLevel);
 
 	// Start the Notification service

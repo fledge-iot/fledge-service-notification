@@ -27,7 +27,8 @@
 class NotificationService : public ServiceHandler
 {
 	public:
-		NotificationService(const std::string& name);
+		NotificationService(const std::string& name,
+				const std::string& token = "");
 		~NotificationService();
 		bool 			start(std::string& coreAddress,
 					      unsigned short corePort);
@@ -55,5 +56,6 @@ class NotificationService : public ServiceHandler
 		std::map<std::string, bool>
 					m_registerCategories;
 		unsigned long		m_delivery_threads;
+		const std::string	m_token;
 };
 #endif
