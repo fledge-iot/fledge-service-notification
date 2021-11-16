@@ -25,6 +25,7 @@
 #include <delivery_queue.h>
 
 #define TIMEBASE_SLEEP_INTERVAL 100 // milliseconds
+#define DEFAULT_TIMEBASE_INTERVAL 5000 // milliseconds
 
 using namespace std;
 
@@ -881,9 +882,10 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 			// Add timestamp_assetName with reading timestamp
 			char tmpbuf[7];
 			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
+
 			content += ", \"timestamp_" + assetName + "\" : " +
-				to_string(tm.tv_sec) +
-				"." + string(tmpbuf);
+				to_string(tm.tv_sec) + "." +
+				string(tmpbuf);
  
 			// Set result
 			results[assetName].type = info.getType();
@@ -911,62 +913,6 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 
 	// Return evaluation result
 	return evalRule;
-}
-
-/**
- * Process the last data buffer and return
- * a JSON string with all datapoints of the last
- * Reading in the ReadingSet
- *
- * @param    data	The last buffer data content
- * @return		JSON string with readings data
- */
-string NotificationQueue::processLastBuffer(NotificationDataElement* data)
-{
-	string output;
-	if (!data || !data->getData())
-	{
-		return output;
-	}
-
-	// Get vector of Reading from ReadingSet
-	ReadingSet* dataSet = data->getData();
-        const std::vector<Reading *>& readings = dataSet->getAllReadings();
-
-	if (!readings.size())
-	{
-		return output;
-	}
-	else
-	{
-		string ret ="{ ";
-
-		// Get the last Reading in the set
-		std::vector<Datapoint *>& dataPoints = readings.back()->getReadingData();
-
-		// Create a JSON string with all datapoints
-		for (auto d = dataPoints.begin();
-			  d != dataPoints.end();
-			  ++d)
-		{
-			if (d != dataPoints.begin())
-			{
-				ret += ", ";
-			}
-			ret += (*d)->toJSONProperty();
-		}
-		ret += " }";
-
-		// Just keep last buffer
-		lock_guard<mutex> guard(m_bufferMutex);
-		this->keepBufferData(data->getRuleName(),
-				     data->getAssetName(),
-				     1);
-		this->clearBufferData(data->getRuleName(),
-					 data->getAssetName());
-
-		return ret;
-	}
 }
 
 /**
@@ -1094,9 +1040,6 @@ void NotificationQueue::setValue(map<string, ResultData>& result,
 				break;
 			case EvaluationType::Average:
 				setSumValues(result, key, val);
-				break;
-			case EvaluationType::Interval:
-				setLatestValue(result, key, val);
 				break;
 			default:
 				break;
@@ -1593,8 +1536,8 @@ static void deliverData(NotificationRule* rule,
 			char tmpbuf[7];
 			snprintf(tmpbuf, sizeof(tmpbuf), "%06ld", tm.tv_usec);
 			assetValue += ", \"timestamp_" + assetName + "\" : " +
-				to_string(tm.tv_sec) +
-				"." + string(tmpbuf);
+				to_string(tm.tv_sec) + "." +
+				string(tmpbuf);
 
 			// Save asset value:
 			// if assetName is not found in next point in time
@@ -1657,8 +1600,12 @@ void NotificationQueue::processTime()
 	typedef struct {
 		uint64_t curr;
 		uint64_t last;
+		unsigned long interval;
 	} rTimers;
 	map<string, rTimers> ruleTimers;
+
+	// Thread sleep time to set at run time
+	unsigned long timeBasedRuleSleepTime = 0;
 
 	Logger::getLogger()->debug("Time based rule thread started");
 	while (doProcess)
@@ -1685,6 +1632,8 @@ void NotificationQueue::processTime()
 		manager->lockInstances();
 		std::map<std::string, NotificationInstance *>& instances = manager->getInstances();
 		manager->unlockInstances();
+
+		unsigned long numTimeBasedInstances = 0;
 
 		// Iterate trough instances
 		for (auto it = instances.begin();
@@ -1721,6 +1670,14 @@ void NotificationQueue::processTime()
 			{
 				Logger::getLogger()->debug("Skipping notification %s",
 					   instanceName.c_str());
+
+				// Instance data and timers found
+				// but instance object not available or not actve:
+				// remove it from map
+				if (irt != ruleTimers.end())
+				{
+					ruleTimers.erase(irt);
+				}
 				// Skip this instance
 				continue;
 			}
@@ -1731,69 +1688,80 @@ void NotificationQueue::processTime()
 				continue;
 			}
 
+			numTimeBasedInstances++;
+
 			// Get ruleName for the assetName
 			string ruleName = instance->getRule()->getName();
 
 			// Get all assests belonging to current rule
 			vector<NotificationDetail>& assets = instance->getRule()->getAssets();
 
-			long timeBasedInterval = 0;
-			// Iterate trough assets
-			for (auto itr = assets.begin();
-				  itr != assets.end();
-				  ++itr)
+			// Get time based interval from first asset info
+			unsigned long timeBasedInterval = assets[0].getInterval() > 0 ?
+						assets[0].getInterval() :
+						DEFAULT_TIMEBASE_INTERVAL;
+
+			// Eval time based rule?
+			uint64_t timeDiff = data.curr - data.last;
+
+			// Set evaluation state
+			bool evaluated = timeDiff >= timeBasedInterval;
+		
+			if (evaluated)
 			{
-				timeBasedInterval = (*itr).getInterval();
-
-				// Process data buffer and fill results
-				this->processDataBuffer(results,
-							ruleName,
-							(*itr).getAssetName(),
-							*itr);
-
-				// Add "_interval" reading
+				// Iterate trough assets
+				for (auto itr = assets.begin();
+					  itr != assets.end();
+					  ++itr)
 				{
+					// Process data buffer and fill results
+					this->processDataBuffer(results,
+								ruleName,
+								(*itr).getAssetName(),
+								*itr);
+
+					// Add new reading
+					// with "_interval" reading object
 					DatapointValue dpV("Time based rule evaluation");
 					Datapoint *d = new Datapoint("evaluation", dpV);
 					Reading *reading = new Reading(string("_interval"), d);
 
-					// Add new reading
-					// with "_interval" reading object
-					// and buffer type EVAL_TYPE::Interval
+					// Set buffer type EVAL_TYPE::Interval
 					results[(*itr).getAssetName()].rData.push_back(reading);
 					results[(*itr).getAssetName()].type = EvaluationType::EVAL_TYPE::Interval;
 				}
-			}
 
-			// Eval rule?
-			uint64_t timeDiff = data.curr - data.last;
-			if (timeDiff >= timeBasedInterval)
-			{
+				// Set last time as current time
 				data.last = currTime;
-				Logger::getLogger()->error("===> Evaluating rule %s, results %d",
-						instanceName.c_str(),
-						results.size());
-				Logger::getLogger()->error("===> Evaluating rule %s, diff %ld, curr %ld, last %ld",
-						instanceName.c_str(),
-						timeDiff,
-						data.curr,
-						data.last);
 
 				// Notification data ready: eval data and sent notification
 				this->evalRule(results, instance->getRule());
 			}
 
-			// Add / update curr time
+			// Add / update curr time, last time and interval
+			data.interval = timeBasedInterval;
+
 			ruleTimers[instanceName] = data;
 
-			// Iterate trough assets
+			// Iterate trough assets and remove or keep data buffers
 			lock_guard<mutex> b_guard(m_bufferMutex);
 			for (auto itr = assets.begin();
 				  itr != assets.end();
 				  ++itr)
 			{
-				this->clearBufferData(ruleName,
+				if (evaluated)
+				{
+					// Time based rule evaluated: remove all buffers
+					this->clearBufferData(ruleName,
 						(*itr).getAssetName());
+				}
+				else
+				{
+					// Time based rule not evaluated yet, keep last fuffer
+					this->keepBufferData(ruleName,
+						(*itr).getAssetName(),
+						1);
+				}
 			}
 		}
 
@@ -1805,7 +1773,38 @@ void NotificationQueue::processTime()
 		// Lock needed
 		manager->collectZombies();
 
-		// TODO: add a configuration option for the value
-		std::this_thread::sleep_for(std::chrono::milliseconds(TIMEBASE_SLEEP_INTERVAL));
+		// Set thread sleep time accordingly to number of time based rules
+		// and found minimun interval
+		if (numTimeBasedInstances)
+		{
+			// Get first instance time interval
+			timeBasedRuleSleepTime = (ruleTimers.begin()->second).interval / 2;
+
+			// Set the minimum value of timeBasedRuleSleepTime
+			for (auto it = std::next(ruleTimers.begin(), 1);
+				  it != ruleTimers.end();
+				  ++it)
+			{
+
+				if (((it->second).interval / 2) < timeBasedRuleSleepTime)
+				{
+					timeBasedRuleSleepTime = (it->second).interval / 2;
+				}
+			}
+
+			// Do not go below TIMEBASE_SLEEP_INTERVAL minimum value
+			timeBasedRuleSleepTime = (timeBasedRuleSleepTime < TIMEBASE_SLEEP_INTERVAL) ?
+				TIMEBASE_SLEEP_INTERVAL :
+				timeBasedRuleSleepTime;
+		}
+
+		// If timeBasedRuleSleepTime is not set, use the default value
+		if (!timeBasedRuleSleepTime)
+		{
+			// Just use a default value
+			timeBasedRuleSleepTime = DEFAULT_TIMEBASE_INTERVAL;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(timeBasedRuleSleepTime));
 	}
 }
