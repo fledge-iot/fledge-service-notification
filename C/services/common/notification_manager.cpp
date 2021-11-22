@@ -888,6 +888,14 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", "
 			 "\"type\": \"integer\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\"} }";
 
+	// FIXME_I:
+const char *_section="xxx7";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - name :%s:", _section, __FUNCTION__, name.c_str() );
+Logger::getLogger()->setMinLevel("warning");
+
 
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
@@ -1027,8 +1035,9 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name,
 	}
 
 	// Create category names for plugins under instanceName
+	// FIXME_I:
 	// with names: "delivery" + instanceName
-	string deliveryCategoryName = "delivery" + name;
+	string deliveryCategoryName = name + "_channel_" + delivery;
 
 	// Get plugins default configuration
 	string deliveryPluginConfig = deliveryPlugin->getInfo()->config;
@@ -1052,6 +1061,16 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name,
 		delete deliveryPlugin;
 		return NULL;
 	}
+
+		// FIXME_I:
+const char *_section="xxx7";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - deliveryCategoryName :%s: delivery :%s:", _section, __FUNCTION__, deliveryCategoryName.c_str() ,delivery.c_str() );
+Logger::getLogger()->setMinLevel("warning");
+
+
 
 	try
 	{
@@ -1211,7 +1230,20 @@ bool NotificationManager::setupInstance(const string& name,
 		// Create category names for plugins under instanceName
 		// Register category interest as well
 		string ruleCategoryName = "rule" + notificationName;
-		string deliveryCategoryName = "delivery" + notificationName;
+		// FIXME_I:
+		string deliveryCategoryName = notificationName + "_channel_" + deliveryPluginName;
+		//string deliveryCategoryName = "delivery" + notificationName;
+
+
+		// FIXME_I:
+const char *_section="xxx7";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - notificationName :%s: deliveryPluginName :%s:", _section, __FUNCTION__, notificationName.c_str() ,deliveryPluginName.c_str() );
+Logger::getLogger()->setMinLevel("warning");
+
+
 
 		// Initialise plugins
 		// Get up-to-date plugin configurations
