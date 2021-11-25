@@ -17,6 +17,9 @@
 #include <reading.h>
 #include <storage_client.h>
 
+// FIXME_I:
+#define CATEGORY_DELIVERY_PREFIX "delivery"
+
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"
 #define NOTIFICATION_CATEGORY	"NOTIFICATION"

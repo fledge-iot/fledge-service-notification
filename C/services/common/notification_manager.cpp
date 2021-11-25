@@ -1037,7 +1037,10 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name,
 	// Create category names for plugins under instanceName
 	// FIXME_I:
 	// with names: "delivery" + instanceName
-	string deliveryCategoryName = name + "_channel_" + delivery;
+	//string deliveryCategoryName = name + "_channel_" + delivery;
+
+	//string deliveryCategoryName = "delivery" + name;
+	string deliveryCategoryName = CATEGORY_DELIVERY_PREFIX + name;
 
 	// Get plugins default configuration
 	string deliveryPluginConfig = deliveryPlugin->getInfo()->config;
@@ -1231,8 +1234,11 @@ bool NotificationManager::setupInstance(const string& name,
 		// Register category interest as well
 		string ruleCategoryName = "rule" + notificationName;
 		// FIXME_I:
-		string deliveryCategoryName = notificationName + "_channel_" + deliveryPluginName;
+		//string deliveryCategoryName = notificationName + "_channel_" + deliveryPluginName;
+
 		//string deliveryCategoryName = "delivery" + notificationName;
+		string deliveryCategoryName = CATEGORY_DELIVERY_PREFIX + notificationName;
+
 
 
 		// FIXME_I:

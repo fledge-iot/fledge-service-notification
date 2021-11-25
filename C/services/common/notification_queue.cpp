@@ -608,6 +608,15 @@ bool NotificationQueue::processDataBuffer(map<string, AssetData>& results,
 void NotificationQueue::evalRule(map<string, AssetData>& results,
 				 NotificationRule* rule)
 {
+
+	// FIXME_I:
+const char *_section="xxx8";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx S1 ::", _section, __FUNCTION__);
+Logger::getLogger()->setMinLevel("warning");
+
 	// Output data string for MIN/MAX/AVG/ALL DATA
 	map<string, string> JSONOutput;
 	// Points in time data for all SingleItem assets data
@@ -654,11 +663,23 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		addReadyData(JSONOutput, evalJSON);
 		evalJSON += " }";
 
+		// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx S2 ::", _section, __FUNCTION__);
+Logger::getLogger()->setMinLevel("warning");
+
+
 		// Call plugin_eval, plugin_reason and plugin_deliver
 		deliverNotification(rule, evalJSON);
 	}
 	else
 	{
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx S3 ::", _section, __FUNCTION__);
+Logger::getLogger()->setMinLevel("warning");
+
+
 		// Deliver SingleItem data + ready data
 		deliverData(rule, singleItem, JSONOutput);
 	}
@@ -1201,6 +1222,16 @@ static void deliverNotification(NotificationRule* rule,
 	// Eval notification data via rule "plugin_eval"
 	bool evalRule = rule->getPlugin()->eval(data);
 
+					// FIXME_I:
+		const char *_section="xxx7";
+
+
+		// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S0 ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
 	// Get instances
 	NotificationManager* instances = NotificationManager::getInstance();
 
@@ -1224,6 +1255,12 @@ static void deliverNotification(NotificationRule* rule,
 		// Call delivery "plugin_deliver"
 		DeliveryPlugin* plugin = instance->getDeliveryPlugin();
 
+
+		// FIXME_I:
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s - xxx getName :%s: enable :%d:", _section, __FUNCTION__, plugin->getName().c_str(), plugin->isEnabled() );
+		Logger::getLogger()->setMinLevel("warning");
+
 		if (plugin &&
 		    !plugin->isEnabled())
 		{
@@ -1232,6 +1269,12 @@ static void deliverNotification(NotificationRule* rule,
 				  rule->getNotificationName().c_str(), plugin->getName().c_str());
 			return;
 		}
+
+				// FIXME_I:
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s - xxx S2 ::", _section, __FUNCTION__);
+		Logger::getLogger()->setMinLevel("warning");
+
 
 		if (!plugin ||
 		    !instance ||
@@ -1269,7 +1312,8 @@ static void deliverNotification(NotificationRule* rule,
 	}
 	else
 	{
-		Logger::getLogger()->debug("Handle state is false for notification "
+		// FIXME_I:
+		Logger::getLogger()->debug("xxx Handle state is false for notification "
 					   "'%s': not delivering notifications",
 					   rule->getNotificationName().c_str());
 	}
@@ -1488,6 +1532,14 @@ static void deliverData(NotificationRule* rule,
 	map<string, bool> assets;
 	map<string, string> values;
 
+				// FIXME_I:
+	const char *_section="xxx7";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S1 ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
 	// Get number of assets in the multimap first
 	for (auto a = itemData.begin(); a != itemData.end(); ++a)
 	{
@@ -1496,6 +1548,12 @@ static void deliverData(NotificationRule* rule,
 
 	// We have SingleItem data to evaluate
 	string evalJSON = "{ ";
+
+		// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S2 ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
 
 	// Fetch unique timestamp keys
 	for (auto tLine = itemData.begin(), end = itemData.end();
@@ -1566,6 +1624,11 @@ static void deliverData(NotificationRule* rule,
 			addReadyData(readyData, output);
 		}
 		output += " }" ;
+
+			// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S3 ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
 
 		// If all assets are available call plugin_eval, plugin_reason and plugin_deliver
 		if (assets.size() == values.size())

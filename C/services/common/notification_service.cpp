@@ -46,7 +46,9 @@ NotificationService::NotificationService(const string& myName,
 
 	// Create new logger instance
 	m_logger = new Logger(myName);
-	m_logger->setMinLevel("warning");
+	//m_logger->setMinLevel("warning");
+	// FIXME_I:
+	m_logger->setMinLevel("debug");
 
 	m_logger->warn("Starting %s notification server", myName.c_str());
 
@@ -206,6 +208,9 @@ bool NotificationService::start(string& coreAddress,
 		m_delivery_threads = DEFAULT_DELIVERY_WORKER_THREADS;
 	}
 
+	// FIXME_I:
+	m_logger->setMinLevel("debug");
+
 	// Get Storage service
 	ServiceRecord storageInfo("Fledge Storage");
 	if (!m_managerClient->getService(storageInfo))
@@ -332,6 +337,16 @@ void NotificationService::cleanupResources()
 void NotificationService::configChange(const string& categoryName,
 				       const string& category)
 {
+
+	// FIXME_I:
+	const char *_section="xxx7";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S1 ::", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 
@@ -346,10 +361,27 @@ void NotificationService::configChange(const string& categoryName,
 		return;
 	}
 
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S2 ::", _section, __FUNCTION__);
+
+
+	// FIXME_I:
+	m_logger->setMinLevel("debug");
+
 	std::size_t found;
 
 	std::size_t foundRule = categoryName.find("rule");
-	std::size_t foundDelivery = categoryName.find("delivery");
+
+	// FIXME_I:
+	//std::size_t foundDelivery = categoryName.find("delivery");
+	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
+
+		// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S3 ::", _section, __FUNCTION__);
+
+
 	if (foundRule == std::string::npos &&
 	    foundDelivery == std::string::npos)
 	{
@@ -429,7 +461,11 @@ void NotificationService::configChange(const string& categoryName,
 		{
 			// Get related notification instance
 			notifications->lockInstances();
-			instance = notifications->getNotificationInstance(categoryName.substr(8));
+
+			// FIXME_I:
+			string NotificationName = categoryName.substr(strlen(CATEGORY_DELIVERY_PREFIX) );
+
+			instance = notifications->getNotificationInstance(NotificationName);
 			notifications->unlockInstances();
 			if (instance && instance->getDeliveryPlugin())
 			{

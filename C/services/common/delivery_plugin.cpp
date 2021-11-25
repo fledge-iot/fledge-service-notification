@@ -132,6 +132,15 @@ bool DeliveryPlugin::deliver(const std::string& deliveryName,
  */
 void DeliveryPlugin::reconfigure(const string& newConfig)
 {
+
+	// FIXME_I:
+	const char *_section="xxx7";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx newConfig :%s:", _section, __FUNCTION__, newConfig.c_str());
+	Logger::getLogger()->setMinLevel("warning");
+
 	if (this->pluginReconfigurePtr)
 	{
 		ConfigCategory reconfig("new_cfg", newConfig);
@@ -148,6 +157,12 @@ void DeliveryPlugin::reconfigure(const string& newConfig)
  */
 void DeliveryPlugin::setEnabled(const ConfigCategory& config)
 {
+	// FIXME_I:
+	const char *_section="xxx7";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S1 ", _section, __FUNCTION__);
+
+
 	// Set the enable flag
 	if (config.itemExists("enable"))
 	{
@@ -157,6 +172,13 @@ void DeliveryPlugin::setEnabled(const ConfigCategory& config)
 		Logger::getLogger()->debug("DeliveryPlugin::setEnabled = %d",
 					   m_enabled);
 	}
+
+	// FIXME_I:
+	Logger::getLogger()->debug("xxx7 eliveryPlugin::setEnabled = %d",m_enabled);
+	Logger::getLogger()->setMinLevel("warning");
+
+
+
 }
 
 /**
