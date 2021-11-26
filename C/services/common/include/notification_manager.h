@@ -278,6 +278,12 @@ class NotificationManager
 						       const std::string& category);
 		bool			setupInstance(const string& name,
 						      const ConfigCategory& config);
+
+		// FIXME_I:
+		bool setupDeliveryFirst(const ConfigCategory& config);
+		bool setupDeliveryExtra(const ConfigCategory& config);
+
+
 		bool			removeInstance(const string& instanceName);
 		void			lockInstances() { m_instancesMutex.lock(); };
 		void			unlockInstances() { m_instancesMutex.unlock(); };

@@ -1192,17 +1192,13 @@ bool NotificationManager::createInstance(const string& name,
 	return this->setupInstance(name, config);
 }
 
-/**
- * Create and add a new Notification instance to instances map.
- * Register also interest for configuration changes.
- *
- * @param    name		The instance name to create.
- * @param    config		The configuration for the new instance.
- * @return			True on success, false otherwise.
- */
-bool NotificationManager::setupInstance(const string& name,
-					const ConfigCategory& config)
-{
+// FIXME_I:
+bool NotificationManager::setupDeliveryFirst(const ConfigCategory& config) {
+
+	bool success;
+
+	success = true;
+
 	bool enabled;
 	string rulePluginName;
 	string deliveryPluginName;
@@ -1219,6 +1215,8 @@ bool NotificationManager::setupInstance(const string& name,
 	}
 
 	string notificationName = config.getName();
+
+
 	std::map<std::string, NotificationInstance *>& instances = this->getInstances();
 
 	// Load plugins and update categories and register configuration change interest
@@ -1323,7 +1321,74 @@ Logger::getLogger()->setMinLevel("warning");
 	// Register category for configuration updates
 	m_service->registerCategory(notificationName);
 
-	return true;
+	return success;
+}
+
+// FIXME_I:
+bool NotificationManager::setupDeliveryExtra(const ConfigCategory& config) {
+
+	bool success;
+	string categoryName;
+	string prefix;
+
+	// FIXME_I:
+	const char *_section="xxx7";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+
+
+	string notificationName = config.getName();
+
+	prefix = notificationName + "_channel_";
+
+	ConfigCategories categories = m_managerClient->getCategories();
+
+	for (unsigned int idx = 0; idx < categories.length(); idx++)
+	{
+		// FIXME_I:
+		categoryName = categories[idx]->getName();
+		Logger::getLogger()->debug("%s / %s - check categoryName :%s:", _section, __FUNCTION__, categoryName.c_str() );
+
+		if (categoryName.compare(0, prefix.size(), prefix) == 0)
+		{
+			ConfigCategory deliveryConfig = m_managerClient->getCategory(categoryName);
+
+			Logger::getLogger()->debug("%s / %s - found categoryName :%s:", _section, __FUNCTION__, categoryName.c_str() );
+		}
+	}
+
+	Logger::getLogger()->setMinLevel("warning");
+
+	success = true;
+
+	return (success);
+
+
+}
+
+
+/**
+ * Create and add a new Notification instance to instances map.
+ * Register also interest for configuration changes.
+ *
+ * @param    name		The instance name to create.
+ * @param    config		The configuration for the new instance.
+ * @return			True on success, false otherwise.
+ */
+bool NotificationManager::setupInstance(const string& name,
+					const ConfigCategory& config)
+{
+	bool success;
+
+	success = setupDeliveryFirst (config);
+
+	if (success) {
+
+		success = setupDeliveryExtra (config);
+	}
+
+	return success;
 }
 
 /**
