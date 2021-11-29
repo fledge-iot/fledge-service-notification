@@ -1223,7 +1223,7 @@ static void deliverNotification(NotificationRule* rule,
 	bool evalRule = rule->getPlugin()->eval(data);
 
 					// FIXME_I:
-		const char *_section="xxx7";
+		const char *_section="xxx6";
 
 
 		// FIXME_I:
@@ -1286,7 +1286,8 @@ static void deliverNotification(NotificationRule* rule,
 		}
 		else
 		{
-			Logger::getLogger()->info("Notification %s will be delivered with reason %s",
+			// FIXME_I:
+			Logger::getLogger()->info("xxx6 Notification %s will be delivered with reason %s",
 					rule->getNotificationName().c_str(), reason.c_str());
 			string customText = instance->getDelivery()->getText();
 

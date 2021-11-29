@@ -19,6 +19,7 @@
 
 // FIXME_I:
 #define CATEGORY_DELIVERY_PREFIX "delivery"
+#define CATEGORY_DELIVERY_EXTRA  "_channel_"
 
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"

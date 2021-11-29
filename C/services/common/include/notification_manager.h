@@ -271,8 +271,9 @@ class NotificationManager
 		bool			APIcreateEmptyInstance(const std::string& name);
 		RulePlugin*		createRuleCategory(const std::string& name,
 							   const std::string& rule);
-		DeliveryPlugin*		createDeliveryCategory(const std::string& name,
-							       const std::string& delivery);
+		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
+		// FIXME_I:
+		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery);
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);
 		bool			createInstance(const std::string& name,
 						       const std::string& category);
@@ -280,9 +281,9 @@ class NotificationManager
 						      const ConfigCategory& config);
 
 		// FIXME_I:
-		bool setupDeliveryFirst(const ConfigCategory& config);
-		bool setupDeliveryExtra(const ConfigCategory& config);
-
+		bool setupDeliveryFirst(const string& name, const ConfigCategory& config);
+		bool setupDeliveryExtra(const string& name, const ConfigCategory& config);
+		bool addDelivery(const ConfigCategory& config, string &deliveryCategoryName, ConfigCategory &deliveryConfig);
 
 		bool			removeInstance(const string& instanceName);
 		void			lockInstances() { m_instancesMutex.lock(); };
