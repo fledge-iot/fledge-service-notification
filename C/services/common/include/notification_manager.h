@@ -238,8 +238,6 @@ class NotificationInstance
 		void			markAsZombie() { m_zombie = true; };
 		bool			isZombie() { return m_zombie; };
 		NotificationState	getState() { return m_state; };
-
-		// FIXME_I:
 		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
 
 	private:
@@ -281,7 +279,6 @@ class NotificationManager
 		RulePlugin*		createRuleCategory(const std::string& name,
 							   const std::string& rule);
 		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
-		// FIXME_I:
 		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly);
 
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);
@@ -290,7 +287,6 @@ class NotificationManager
 		bool			setupInstance(const string& name,
 						      const ConfigCategory& config);
 
-		// FIXME_I:
 		bool setupRuleDeliveryFirst(const string& name, const ConfigCategory& config);
 		bool setupDeliveryExtra(const string& name, const ConfigCategory& config);
 		bool addDelivery(const ConfigCategory& config, string &deliveryCategoryName, ConfigCategory &deliveryConfig);
@@ -309,8 +305,6 @@ class NotificationManager
 		bool			APIdeleteInstance(const string& instanceName);
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
-
-		// FIXME_I:
 		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
 
 	private:

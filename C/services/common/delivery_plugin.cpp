@@ -113,7 +113,7 @@ const char *_section="xxx8";
 string name = this->getName();
 
 Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s - xxx notificationName :%s: deliveryName :%s: plugin :%s: message :%s:", _section, __FUNCTION__, ,notificationName.c_str() deliveryName.c_str(),name.c_str(), message.c_str()  );
+Logger::getLogger()->debug("%s / %s - xxx notificationName :%s: deliveryName :%s: plugin :%s: message :%s:", _section, __FUNCTION__, notificationName.c_str(), deliveryName.c_str(),name.c_str(), message.c_str()  );
 Logger::getLogger()->setMinLevel("warning");
 
 
@@ -144,7 +144,6 @@ Logger::getLogger()->setMinLevel("warning");
  */
 void DeliveryPlugin::reconfigure(const string& newConfig)
 {
-
 	// FIXME_I:
 	const char *_section="xxx7";
 
@@ -169,12 +168,6 @@ void DeliveryPlugin::reconfigure(const string& newConfig)
  */
 void DeliveryPlugin::setEnabled(const ConfigCategory& config)
 {
-	// FIXME_I:
-	const char *_section="xxx7";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - xxx S1 ", _section, __FUNCTION__);
-
-
 	// Set the enable flag
 	if (config.itemExists("enable"))
 	{
@@ -184,12 +177,6 @@ void DeliveryPlugin::setEnabled(const ConfigCategory& config)
 		Logger::getLogger()->debug("DeliveryPlugin::setEnabled = %d",
 					   m_enabled);
 	}
-
-	// FIXME_I:
-	Logger::getLogger()->debug("xxx7 eliveryPlugin::setEnabled = %d",m_enabled);
-	Logger::getLogger()->setMinLevel("warning");
-
-
 
 }
 

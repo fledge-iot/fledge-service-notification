@@ -17,7 +17,6 @@
 #include <reading.h>
 #include <storage_client.h>
 
-// FIXME_I:
 #define CATEGORY_DELIVERY_PREFIX "delivery"
 #define CATEGORY_DELIVERY_EXTRA  "_channel_"
 
