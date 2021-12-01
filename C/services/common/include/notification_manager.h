@@ -208,6 +208,11 @@ class NotificationInstance
 		{
 			return (m_delivery ? m_delivery->getPlugin() : NULL);
 		};
+		vector<NotificationDelivery*>		getDeliveryExtra()
+		{
+			return (m_deliveryExtra);
+		};
+
 		std::string		toJSON(bool showAll = false);
 		bool			isEnabled() const { return m_enable; };
 		NotificationType	getType() const { return m_type; };
@@ -234,12 +239,16 @@ class NotificationInstance
 		bool			isZombie() { return m_zombie; };
 		NotificationState	getState() { return m_state; };
 
+		// FIXME_I:
+		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
+
 	private:
 		const std::string	m_name;
 		bool			m_enable;
 		NotificationType	m_type;
 		NotificationRule*	m_rule;
-		NotificationDelivery*	m_delivery;
+		NotificationDelivery*	        m_delivery;
+		vector<NotificationDelivery*>	m_deliveryExtra;
 		time_t			m_lastSent;
 		NotificationState	m_state;
 		bool			m_zombie;
@@ -273,7 +282,8 @@ class NotificationManager
 							   const std::string& rule);
 		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
 		// FIXME_I:
-		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery);
+		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly);
+
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);
 		bool			createInstance(const std::string& name,
 						       const std::string& category);
@@ -281,7 +291,7 @@ class NotificationManager
 						      const ConfigCategory& config);
 
 		// FIXME_I:
-		bool setupDeliveryFirst(const string& name, const ConfigCategory& config);
+		bool setupRuleDeliveryFirst(const string& name, const ConfigCategory& config);
 		bool setupDeliveryExtra(const string& name, const ConfigCategory& config);
 		bool addDelivery(const ConfigCategory& config, string &deliveryCategoryName, ConfigCategory &deliveryConfig);
 
@@ -299,6 +309,9 @@ class NotificationManager
 		bool			APIdeleteInstance(const string& instanceName);
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
+
+		// FIXME_I:
+		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
 
 	private:
 		PLUGIN_HANDLE		loadRulePlugin(const std::string& rulePluginName);

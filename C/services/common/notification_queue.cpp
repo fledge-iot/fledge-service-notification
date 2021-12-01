@@ -1203,6 +1203,137 @@ static void addDataToReason(string& reason, const string& data)
 	}
 }
 
+// FIXME_I:
+static void deliverNotification(
+	NotificationDelivery*	delivery,
+	DeliveryPlugin* plugin,
+	NotificationRule* rule,
+	string reason
+)
+{
+
+	// Get instances
+	NotificationManager* instances = NotificationManager::getInstance();
+
+	// Find instance for this rule
+	NotificationInstance* instance =
+		instances->getNotificationInstance(rule->getNotificationName());
+
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
+	// FIXME_I:
+	const char *_section="xxx6";
+
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S0  :: ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx getName :%s: enable :%d:", _section, __FUNCTION__, plugin->getName().c_str(), plugin->isEnabled() );
+	Logger::getLogger()->setMinLevel("warning");
+
+	if (plugin &&
+		!plugin->isEnabled())
+	{
+		Logger::getLogger()->warn(
+			"Notification %s has triggered but delivery plugin '%s' is not enabled",
+			  rule->getNotificationName().c_str(), plugin->getName().c_str());
+		return;
+	}
+
+			// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S2 ::", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	if (!plugin ||
+		!instance ||
+		!instance->isEnabled() ||
+		!delivery)
+	{
+		Logger::getLogger()->error("Aborting delivery for notification '%s'",
+					   rule->getNotificationName().c_str());
+	}
+	else
+	{
+		// FIXME_I:
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s - xxx S3 ::", _section, __FUNCTION__);
+		Logger::getLogger()->setMinLevel("warning");
+
+
+		Logger::getLogger()->info("xxx6 Notification %s will be delivered with reason %s",
+				rule->getNotificationName().c_str(), reason.c_str());
+		string customText = delivery->getText();
+
+		// Create data object for delivery queue
+		DeliveryDataElement* deliveryData =
+			new DeliveryDataElement(
+						plugin,
+						delivery->getName(),
+						delivery->getNotificationName(),
+						reason,
+						(customText.empty() ?
+						"ALERT for " + rule->getName() :
+						customText),
+						instance);
+
+		// Add data object to the queue
+		DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
+		dQueue->addElement(queueElement);
+
+		// Audit log
+		instances->auditNotification(instance->getName(), reason);
+		// Update sent notification statistics
+		instances->updateSentStats();
+	}
+
+}
+
+// FIXME_I:
+static void deliverNotificationExtra(
+	NotificationRule* rule,
+	string reason
+)
+{
+
+	// Get instances
+	NotificationManager* instances = NotificationManager::getInstance();
+
+	// Find instance for this rule
+	NotificationInstance* instance =
+		instances->getNotificationInstance(rule->getNotificationName());
+
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
+	// FIXME_I:
+	const char *_section="xxx6";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - xxx S0 :: ", _section, __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	vector<NotificationDelivery*> deliveryExtra = instance->getDeliveryExtra();
+
+	for(auto &delivery : deliveryExtra) {
+
+		DeliveryPlugin* plugin = delivery->getPlugin();
+
+		deliverNotification(delivery, plugin, rule, reason);
+	}
+
+}
+
+
 /**
  * Deliver notification data
  *
@@ -1228,7 +1359,7 @@ static void deliverNotification(NotificationRule* rule,
 
 		// FIXME_I:
 	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - xxx S0 ", _section, __FUNCTION__);
+	Logger::getLogger()->debug("%s / %s - xxx S0 evalRule :%d: ", _section, __FUNCTION__, evalRule);
 	Logger::getLogger()->setMinLevel("warning");
 
 
@@ -1252,64 +1383,16 @@ static void deliverNotification(NotificationRule* rule,
 		// Add the data that trigger the event to the reason document
 		addDataToReason(reason, data);
 
-		// Call delivery "plugin_deliver"
-		DeliveryPlugin* plugin = instance->getDeliveryPlugin();
+		{ // Send to the first delivery
 
+			// Call delivery "plugin_deliver"
+			DeliveryPlugin* plugin = instance->getDeliveryPlugin();
+			NotificationDelivery*	delivery = instance->getDelivery();
 
-		// FIXME_I:
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s - xxx getName :%s: enable :%d:", _section, __FUNCTION__, plugin->getName().c_str(), plugin->isEnabled() );
-		Logger::getLogger()->setMinLevel("warning");
-
-		if (plugin &&
-		    !plugin->isEnabled())
-		{
-			Logger::getLogger()->warn(
-				"Notification %s has triggered but delivery plugin '%s' is not enabled",
-				  rule->getNotificationName().c_str(), plugin->getName().c_str());
-			return;
+			deliverNotification(delivery, plugin, rule, reason);
 		}
 
-				// FIXME_I:
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s - xxx S2 ::", _section, __FUNCTION__);
-		Logger::getLogger()->setMinLevel("warning");
-
-
-		if (!plugin ||
-		    !instance ||
-		    !instance->isEnabled() ||
-		    !instance->getDelivery())
-		{
-			Logger::getLogger()->error("Aborting delivery for notification '%s'",
-						   rule->getNotificationName().c_str());
-		}
-		else
-		{
-			// FIXME_I:
-			Logger::getLogger()->info("xxx6 Notification %s will be delivered with reason %s",
-					rule->getNotificationName().c_str(), reason.c_str());
-			string customText = instance->getDelivery()->getText();
-
-			// Create data object for delivery queue
-			DeliveryDataElement* deliveryData =
-				new DeliveryDataElement(instance->getDelivery()->getName(),
-							instance->getDelivery()->getNotificationName(),
-							reason,
-							(customText.empty() ?
-							"ALERT for " + rule->getName() :
-							customText),
-							instance);
-
-			// Add data object to the queue
-			DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
-			dQueue->addElement(queueElement);
-							 
-			// Audit log
-			instances->auditNotification(instance->getName(), reason);
-			// Update sent notification statistics
-			instances->updateSentStats();
-		}
+		deliverNotificationExtra(rule, reason);
 	}
 	else
 	{

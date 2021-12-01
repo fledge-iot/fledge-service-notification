@@ -25,13 +25,16 @@
 class DeliveryDataElement
 {
 	public:
-		DeliveryDataElement(const std::string& deliveryName,
+		DeliveryDataElement(
+					DeliveryPlugin* plugin,
+					const std::string& deliveryName,
 				    const std::string& notificationName,
 				    const std::string& triggerReason,
 				    const std::string& message,
 				    NotificationInstance* instance);
 
 		~DeliveryDataElement();
+		DeliveryPlugin*     getPlugin() { return m_plugin; };
 		const std::string&	getDeliveryName() { return m_deliveryName; };
 		const std::string&	getNotificationName() { return m_notificationName; };
 		const std::string&	getReason() { return m_reason; };
@@ -42,6 +45,7 @@ class DeliveryDataElement
 					m_instance;
 
 	private:
+		DeliveryPlugin* m_plugin;
 		std::string	m_deliveryName;
 		std::string	m_notificationName;
 		std::string	m_reason;

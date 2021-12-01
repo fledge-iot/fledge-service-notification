@@ -106,6 +106,18 @@ bool DeliveryPlugin::deliver(const std::string& deliveryName,
 			     const std::string& triggerReason,
 			     const std::string& message)
 {
+// FIXME_I:
+const char *_section="xxx8";
+
+// FIXME_I:
+string name = this->getName();
+
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx notificationName :%s: deliveryName :%s: plugin :%s: message :%s:", _section, __FUNCTION__, ,notificationName.c_str() deliveryName.c_str(),name.c_str(), message.c_str()  );
+Logger::getLogger()->setMinLevel("warning");
+
+
+
 	bool ret = false;
 	time_t	start = time(0);
 	if (this->pluginDeliverPtr)

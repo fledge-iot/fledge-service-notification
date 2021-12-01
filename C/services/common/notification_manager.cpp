@@ -144,7 +144,9 @@ NotificationDelivery::~NotificationDelivery()
 	// This elemet added to delivery queue will signal the need of stutting down
 	// the DeliveryPlugin after processing all data for this Delivery
 	DeliveryDataElement* deliveryData =
-		new DeliveryDataElement(this->getName(),
+		new DeliveryDataElement(
+					this->getPlugin(),
+					this->getName(),
 					this->getNotificationName(),
 					"",
 					"",
@@ -183,6 +185,15 @@ NotificationInstance::NotificationInstance(const string& name,
 	m_lastSent = 0;
 	m_state = NotificationInstance::StateCleared;
 }
+
+// FIXME_I:
+void NotificationInstance::addDeliveryExtra(
+					   NotificationType type,
+					   NotificationDelivery* delivery)
+{
+	m_deliveryExtra.push_back(delivery);
+}
+
 
 /**
  * NotificationInstance destructor
@@ -330,6 +341,14 @@ void NotificationManager::addInstance(const string& instanceName,
 {
 	bool createInstance = true;
 
+	// FIXME_I:
+const char *_section="xxx7";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx addInstance :%s:", _section, __FUNCTION__, instanceName.c_str() );
+Logger::getLogger()->setMinLevel("warning");
+
 	// Protect changes to m_instances
 	lock_guard<mutex> guard(m_instancesMutex);
 	auto instance = m_instances.find(instanceName);
@@ -373,6 +392,40 @@ void NotificationManager::addInstance(const string& instanceName,
 		}
 	}
 }
+
+
+// FIXME_I:
+void NotificationManager::addDeliveryExtra(
+	const string& instanceName,
+	NOTIFICATION_TYPE type,
+	NotificationDelivery* delivery)
+{
+	bool createInstance = true;
+
+	// FIXME_I:
+const char *_section="xxx7";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - xxx addInstance :%s:", _section, __FUNCTION__, instanceName.c_str() );
+Logger::getLogger()->setMinLevel("warning");
+
+
+	// Protect changes to m_instances
+	lock_guard<mutex> guard(m_instancesMutex);
+	auto instance = m_instances.find(instanceName);
+	if (instance != m_instances.end())
+	{
+		instance->second->addDeliveryExtra(type, delivery);
+	}
+	else
+	{
+		 Logger::getLogger()->error("Cannot setup new delivery for key %s",
+						instanceName.c_str());
+	}
+
+}
+
 
 /**
  * Return a JSON string with current loaded notification instances
@@ -1014,12 +1067,17 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
 }
 
 // FIXME_I:
-string NotificationManager::getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery) {
+string NotificationManager::getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly) {
 
 	string deliveryCategoryName;
 
 	if (extraDelivery) {
-		deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA + delivery;
+		if (extraDelivery)
+		{
+			deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA + delivery;
+		} else {
+			deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA;
+		}
 	} else {
 		deliveryCategoryName = CATEGORY_DELIVERY_PREFIX + NotificationName;
 	}
@@ -1053,7 +1111,7 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 	//string deliveryCategoryName = name + "_channel_" + delivery;
 
 	//string deliveryCategoryName = "delivery" + name;
-	string deliveryCategoryName = getDeliveryCategoryName(name, delivery, extraDelivery);
+	string deliveryCategoryName = getDeliveryCategoryName(name, delivery, extraDelivery, false);
 
 	// Get plugins default configuration
 	string deliveryPluginConfig = deliveryPlugin->getInfo()->config;
@@ -1206,7 +1264,7 @@ bool NotificationManager::createInstance(const string& name,
 }
 
 // FIXME_I:
-bool NotificationManager::setupDeliveryFirst(const string& name, const ConfigCategory& config) {
+bool NotificationManager::setupRuleDeliveryFirst(const string& name, const ConfigCategory& config) {
 
 	bool success;
 
@@ -1250,7 +1308,7 @@ bool NotificationManager::setupDeliveryFirst(const string& name, const ConfigCat
 		// FIXME_I:
 		//string deliveryCategoryName = CATEGORY_DELIVERY_PREFIX + notificationName;
 
-		string deliveryCategoryName = getDeliveryCategoryName(notificationName, deliveryPluginName, false);
+		string deliveryCategoryName = getDeliveryCategoryName(notificationName, deliveryPluginName, false, false);
 
 
 		// FIXME_I:
@@ -1368,20 +1426,10 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 
 	string notificationName = config.getName();
 
-
-	// Load plugins and update categories and register configuration change interest
-	RulePlugin* rule = this->createRuleCategory(notificationName,
-						    rulePluginName);
-
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
 
-	if (rule && deliver)
+	if (deliver)
 	{
-		// Create category names for plugins under instanceName
-		// Register category interest as well
-		string ruleCategoryName = "rule" + notificationName;
-		// FIXME_I:
-		//string deliveryCategoryName = notificationName + "_channel_" + deliveryPluginName;
 
 		// FIXME_I:
 const char *_section="xxx7";
@@ -1391,23 +1439,7 @@ Logger::getLogger()->setMinLevel("debug");
 Logger::getLogger()->debug("%s / %s - notificationName :%s: deliveryPluginName :%s:", _section, __FUNCTION__, notificationName.c_str() ,deliveryPluginName.c_str() );
 Logger::getLogger()->setMinLevel("warning");
 
-
-
-		// Initialise plugins
-		// Get up-to-date plugin configurations
-		ConfigCategory ruleConfig = m_managerClient->getCategory(ruleCategoryName);
-
-		NotificationRule* theRule = NULL;
 		NotificationDelivery* theDelivery = NULL;
-
-		// Call rule "plugin_init" with configuration
-		// and instantiate NotificationRule class
-		if (rule->init(ruleConfig))
-		{
-			theRule = new NotificationRule(ruleCategoryName,
-						       notificationName,
-						       rule);
-		}
 
 		// Call delivery "plugin_init" with configuration
 		// and instantiate  NotificationDelivery class
@@ -1435,34 +1467,28 @@ Logger::getLogger()->setMinLevel("warning");
 								customText);
 		}
 
+		// FIXME_I: TBD
 		// Add plugin category name under service/process config name
 		vector<string> children;
-		children.push_back(ruleCategoryName);
 		children.push_back(deliveryCategoryName);
 		m_managerClient->addChildCategories(notificationName,
 						    children);
 
-		// Add the new instance
-		this->addInstance(notificationName,
-				  enabled,
-				  type,
-				  theRule,
-				  theDelivery);
+		addDeliveryExtra(notificationName, type, theDelivery);
 	}
 	else
 	{
+		// FIXME_I:
+		// TBD
 		// Add a new instance without plugins
 		delete deliver;
-		delete rule;
-		this->addInstance(notificationName,
-				  enabled,
-				  type,
-				  NULL,
-				  NULL);
+//		delete rule;
+//		this->addInstance(notificationName,
+//				  enabled,
+//				  type,
+//				  NULL,
+//				  NULL);
 	}
-
-	// Register category for configuration updates
-	m_service->registerCategory(notificationName);
 
 	return success;
 
@@ -1487,9 +1513,13 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 	string notificationName = config.getName();
 
 	// FIXME_I:
-	prefix = notificationName + CATEGORY_DELIVERY_EXTRA;
+	//prefix = notificationName + CATEGORY_DELIVERY_EXTRA;
+	prefix = getDeliveryCategoryName(notificationName, "", true, true);
 
-	ConfigCategories categories = m_managerClient->getCategories();
+	// FIXME_I: consider solo child
+	//ConfigCategories categories = m_managerClient->getCategories();
+	ConfigCategories categories = m_managerClient->getChildCategories(notificationName);
+
 
 	for (unsigned int idx = 0; idx < categories.length(); idx++)
 	{
@@ -1529,7 +1559,7 @@ bool NotificationManager::setupInstance(const string& name,
 {
 	 bool success;
 
-	success = setupDeliveryFirst (name, config);
+	success = setupRuleDeliveryFirst (name, config);
 
 	// FIXME_I:
 	if (success) {
