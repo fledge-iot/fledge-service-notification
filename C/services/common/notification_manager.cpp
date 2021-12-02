@@ -1413,6 +1413,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 	{
 		// FIXME_I: tbd
 		delete deliver;
+		success = false;
 	}
 
 	return success;

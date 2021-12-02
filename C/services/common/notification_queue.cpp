@@ -56,8 +56,8 @@ static void addReadyData(const map<string, string>& readyData,
 static void deliverData(NotificationRule* rule,
 			const std::multimap<uint64_t, Reading*>& itemData,
 			const map<string, string>& readyData);
-static void deliverNotification(NotificationRule* rule,
-				const std::string& data);
+static void deliverNotifications(NotificationRule* rule,
+								 const std::string& data);
 
 /**
  * NotificationDataElement construcrtor
@@ -656,7 +656,7 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		evalJSON += " }";
 
 		// Call plugin_eval, plugin_reason and plugin_deliver
-		deliverNotification(rule, evalJSON);
+		deliverNotifications(rule, evalJSON);
 	}
 	else
 	{
@@ -1184,7 +1184,7 @@ static void addDataToReason(string& reason, const string& data)
 }
 
 // FIXME_I:
-static void deliverNotification(
+static void sendNotification(
 	NotificationDelivery*	delivery,
 	DeliveryPlugin* plugin,
 	NotificationRule* rule,
@@ -1250,7 +1250,7 @@ static void deliverNotification(
 }
 
 // FIXME_I:
-static void deliverNotificationExtra(
+static void deliverNotificationsExtra(
 	NotificationRule* rule,
 	string reason
 )
@@ -1272,7 +1272,7 @@ static void deliverNotificationExtra(
 
 		DeliveryPlugin* plugin = delivery->getPlugin();
 
-		deliverNotification(delivery, plugin, rule, reason);
+		sendNotification(delivery, plugin, rule, reason);
 	}
 
 }
@@ -1291,8 +1291,8 @@ static void deliverNotificationExtra(
  * @param    data	JSON data to evaluate
  *
  */
-static void deliverNotification(NotificationRule* rule,
-				const string& data)
+static void deliverNotifications(NotificationRule* rule,
+								 const string& data)
 {
 	// Eval notification data via rule "plugin_eval"
 	bool evalRule = rule->getPlugin()->eval(data);
@@ -1323,10 +1323,10 @@ static void deliverNotification(NotificationRule* rule,
 			DeliveryPlugin* plugin = instance->getDeliveryPlugin();
 			NotificationDelivery*	delivery = instance->getDelivery();
 
-			deliverNotification(delivery, plugin, rule, reason);
+			sendNotification(delivery, plugin, rule, reason);
 		}
 
-		deliverNotificationExtra(rule, reason);
+		deliverNotificationsExtra(rule, reason);
 	}
 	else
 	{
@@ -1631,7 +1631,7 @@ static void deliverData(NotificationRule* rule,
 		// If all assets are available call plugin_eval, plugin_reason and plugin_deliver
 		if (assets.size() == values.size())
 		{
-			deliverNotification(rule, output);
+			deliverNotifications(rule, output);
 		}
 	}
 }

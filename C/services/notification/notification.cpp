@@ -60,9 +60,7 @@ int main(int argc, char *argv[])
 	string	       coreAddress = "localhost";
 	bool	       daemonMode = true;
 	string	       myName = SERVICE_NAME;
-	// FIXME_I:
-	//string	       logLevel = "warning";
-	string	       logLevel = "debug";
+	string	       logLevel = "warning";
 	string         token = "";
 
 	signal(SIGSEGV, handler);
@@ -98,8 +96,6 @@ int main(int argc, char *argv[])
 			token = &argv[i][8];
 		}
 	}
-	// FIXME_I:
-   	logLevel = "debug";
 
 	if (daemonMode && makeDaemon() == -1)
 	{
@@ -113,12 +109,6 @@ int main(int argc, char *argv[])
 	std::signal(SIGINT,  signalHandler);
 	std::signal(SIGSTOP, signalHandler);
 	std::signal(SIGTERM, signalHandler);
-
-	// FIXME_I:
-	const char *_section="xxx7";
-
-	// FIXME_I:
-	Logger::getLogger()->debug("%s / %s START - xxx ::", _section, __FUNCTION__);
 
 	// Instantiate the NotificationService class
 	service = new NotificationService(myName, token);
