@@ -1408,6 +1408,10 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 //						    children);
 
 		addDeliveryExtra(notificationName, type, theDelivery);
+
+		// FIXME_I:
+		m_service->registerCategoryChild(this, notificationName);
+
 	}
 	else
 	{

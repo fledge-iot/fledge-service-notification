@@ -41,6 +41,8 @@ class NotificationService : public ServiceHandler
 		void			configChange(const std::string&,
 						     const std::string&);
 		void			registerCategory(const std::string& categoryName);
+		void   			registerCategoryChild(const string& categoryName);
+
 		void			ingestReading(Reading& reading)
 					{
 						m_storage->readingAppend(reading);
@@ -58,6 +60,9 @@ class NotificationService : public ServiceHandler
 		StorageClient*		m_storage;
 		std::map<std::string, bool>
 					m_registerCategories;
+		std::map<std::string, bool>
+					m_registerCategoriesChild;
+
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
 };

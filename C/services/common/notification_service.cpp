@@ -465,6 +465,21 @@ void NotificationService::registerCategory(const string& categoryName)
 	    m_registerCategories.find(categoryName) == m_registerCategories.end())
 	{
 		configHandler->registerCategory(this, categoryName);
+
 		m_registerCategories[categoryName] = true;
+	}
+}
+
+// FIXME_I:
+void NotificationService::registerCategoryChild(const string& categoryName)
+{
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
+	// Call registerCategory only once
+	if (configHandler &&
+	    m_registerCategoriesChild.find(categoryName) == m_registerCategoriesChild.end())
+	{
+		configHandler->registerCategoryChild(this, categoryName);
+
+		m_registerCategoriesChild[categoryName] = true;
 	}
 }
