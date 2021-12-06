@@ -1365,7 +1365,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 
 	deliveryPluginName = deliveryConfig.getValue("plugin");
 
-	string notificationName = config.getName();
+	string const notificationName = config.getName();
 
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
 
@@ -1410,7 +1410,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 		addDeliveryExtra(notificationName, type, theDelivery);
 
 		// FIXME_I:
-		m_service->registerCategoryChild(this, notificationName);
+		m_service->registerCategoryChild(notificationName);
 
 	}
 	else
