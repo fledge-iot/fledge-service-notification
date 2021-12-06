@@ -91,3 +91,7 @@ if (FLEDGE_INSTALL)
 	install(DIRECTORY DESTINATION ${FLEDGE_INSTALL}/plugins/notificationRule)
 
 endif()
+
+
+#// FIXME:
+set(CMAKE_BUILD_TYPE Debug)

@@ -157,6 +157,15 @@ void NotificationSubscription::registerSubscriptions()
 bool NotificationSubscription::addSubscription(const std::string& assetName,
 					       SubscriptionElement& element)
 {
+
+// FIXME_I:
+string _section="xxx6 ";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - START ::", _section.c_str(), __FUNCTION__);
+
+
 	// Get NotificationAPI instance
 	NotificationApi* api = NotificationApi::getInstance();
 	// Get callback URL
@@ -164,7 +173,7 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 
 	if (callBackURL.empty())
 	{
-		m_logger->fatal("Error while registering asset '" + \
+		m_logger->fatal(_section + " Error while registering asset '" + \
 				assetName + "' for notification " + \
 				element.getNotificationName() + \
 				" callback URL is not set");
@@ -183,13 +192,18 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 		m_storage.registerAssetNotification(assetName,
 						    (callBackURL + urlEncode(assetName)));
 
-		m_logger->info("Registering asset '" + \
+		m_logger->info(_section + "Registering asset '" + \
 			       assetName + "' for notification " + \
 			       element.getNotificationName());
 	}
 
-	m_logger->info("Subscription for asset '" + assetName + \
-		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules"); 
+	m_logger->info(_section + "Subscription for asset '" + assetName + \
+		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules");
+
+			   // FIXME_I:
+Logger::getLogger()->debug("%s / %s - END ::", _section.c_str(), __FUNCTION__);
+Logger::getLogger()->setMinLevel("warning");
+
 	return true;
 }
 
