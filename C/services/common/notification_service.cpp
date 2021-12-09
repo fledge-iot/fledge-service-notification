@@ -323,6 +323,55 @@ void NotificationService::cleanupResources()
 	m_managementApi->stop();
 }
 
+// FIXME_I:
+/**
+ * Configuration change notification
+ *
+ * @param    categoryName	The category name which configuration has been changed
+ * @param    category		The JSON string with new configuration
+ */
+void NotificationService::configChangeChild(const string& categoryName,
+				       const string& category)
+{
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+
+	ConfigCategory config(categoryName, category);
+
+	std::size_t found;
+
+	std::size_t foundRule = categoryName.find("rule");
+
+
+// FIXME_I:
+string _section="xxx13 ";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s -  S1 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+		// It's a notification category
+		notifications->lockInstances();
+		instance = notifications->getNotificationInstance(categoryName);
+		notifications->unlockInstances();
+		if (instance)
+		{
+			notifications->setupDeliveryExtra(categoryName, config);
+		}
+
+		// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s -  S2 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+
+	if (instance == NULL)
+	{
+		// Log message
+	}
+}
+
 /**
  * Configuration change notification
  *
@@ -384,7 +433,7 @@ void NotificationService::configChange(const string& categoryName,
 			{
 				return;
 			}
-			
+
 			// Call plugin reconfigure
 			instance->getRulePlugin()->reconfigure(category);
 
@@ -452,6 +501,7 @@ void NotificationService::configChange(const string& categoryName,
 	}
 }
 
+
 /**
  * Register a configuration category for updates
  *
@@ -473,6 +523,16 @@ void NotificationService::registerCategory(const string& categoryName)
 // FIXME_I:
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
+
+	// FIXME_I:
+	string _section="xxx8 ";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - START categoryName :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str());
+	Logger::getLogger()->setMinLevel("warning");
+
+
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once
 	if (configHandler &&

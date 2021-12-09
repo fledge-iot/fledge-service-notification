@@ -1334,6 +1334,9 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 	// Register category for configuration updates
 	m_service->registerCategory(notificationName);
 
+	// FIXME_I:
+	m_service->registerCategoryChild(notificationName);
+
 	return success;
 }
 
@@ -1410,7 +1413,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 		addDeliveryExtra(notificationName, type, theDelivery);
 
 		// FIXME_I:
-		m_service->registerCategoryChild(notificationName);
+		//m_service->registerCategoryChild(notificationName);
 
 	}
 	else

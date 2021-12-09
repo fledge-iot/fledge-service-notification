@@ -40,6 +40,8 @@ class NotificationService : public ServiceHandler
 		void			cleanupResources();
 		void			configChange(const std::string&,
 						     const std::string&);
+		void			configChangeChild(const std::string&,
+						     const std::string&);
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);
 
