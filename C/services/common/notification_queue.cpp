@@ -1272,6 +1272,15 @@ static void deliverNotificationsExtra(
 
 		DeliveryPlugin* plugin = delivery->getPlugin();
 
+			// FIXME_I:
+			string _section="xxx15 ";
+
+			// FIXME_I:
+			Logger::getLogger()->setMinLevel("debug");
+			Logger::getLogger()->debug("%s / %s - First EXTRA delivery  reason :%s:", _section.c_str(), __FUNCTION__, reason.c_str());
+			Logger::getLogger()->setMinLevel("warning");
+
+
 		sendNotification(delivery, plugin, rule, reason);
 	}
 
@@ -1322,6 +1331,16 @@ static void deliverNotifications(NotificationRule* rule,
 			// Call delivery "plugin_deliver"
 			DeliveryPlugin* plugin = instance->getDeliveryPlugin();
 			NotificationDelivery*	delivery = instance->getDelivery();
+
+
+			// FIXME_I:
+			string _section="xxx15 ";
+
+			// FIXME_I:
+			Logger::getLogger()->setMinLevel("debug");
+			Logger::getLogger()->debug("%s / %s - First delivery  reason :%s:", _section.c_str(), __FUNCTION__, reason.c_str());
+			Logger::getLogger()->setMinLevel("warning");
+
 
 			sendNotification(delivery, plugin, rule, reason);
 		}

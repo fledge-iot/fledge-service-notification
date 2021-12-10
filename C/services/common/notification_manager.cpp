@@ -26,6 +26,11 @@
 #include <reading.h>
 #include <delivery_queue.h>
 
+
+//# FIXME_I:
+#include <tmp_log.hpp>
+
+
 using namespace std;
 
 extern "C" {
@@ -192,6 +197,16 @@ void NotificationInstance::addDeliveryExtra(
 					   NotificationDelivery* delivery)
 {
 	m_deliveryExtra.push_back(delivery);
+
+
+		// FIXME_I:
+	string _section="xxx14 ";
+
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - m_deliveryExtra :%d:", _section.c_str(), __FUNCTION__, m_deliveryExtra.size());
+	Logger::getLogger()->setMinLevel("warning");
+
 }
 
 
@@ -1349,6 +1364,16 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 
 	success = true;
 
+
+// FIXME_I:
+string _section="xxx14 ";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s - deliveryCategoryName :%s:", _section.c_str(), __FUNCTION__, deliveryCategoryName.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+
 	bool enabled;
 	string rulePluginName;
 	string deliveryPluginName;
@@ -1370,7 +1395,9 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 
 	string const notificationName = config.getName();
 
-	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
+	// FIXME_I:
+	DeliveryPlugin* deliver = this->createDeliveryPlugin(deliveryPluginName);
+	//DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
 
 	if (deliver)
 	{
@@ -1436,7 +1463,33 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 	success = true;
 
+	// FIXME_I:
+string _section="xxx14 ";
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s S1 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+
+
 	string notificationName = config.getName();
+
+	//# FIXME_I:
+char tmp_buffer[500000];
+snprintf (tmp_buffer,500000, "%s : S1.1 name |%s| notificationName |%s|"
+    ,__FUNCTION__
+    ,categoryName.c_str()
+	,notificationName.c_str()
+    );
+tmpLogger (tmp_buffer);
+snprintf (tmp_buffer,500000, "%s : S1.2 config |%s| "
+    ,__FUNCTION__
+	,config.toJSON().c_str()
+    );
+tmpLogger (tmp_buffer);
+
+
 
 	prefix = getDeliveryCategoryName(notificationName, "", true, true);
 
@@ -1448,12 +1501,48 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 		if (categoryName.compare(0, prefix.size(), prefix) == 0)
 		{
+
 			ConfigCategory deliveryConfig = m_managerClient->getCategory(categoryName);
+
+// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s S2 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+//# FIXME_I:
+char tmp_buffer[500000];
+snprintf (tmp_buffer,500000, "%s : S2.1  notificationName |%s| categoryName |%s|"
+    ,__FUNCTION__
+	,notificationName.c_str()
+    ,categoryName.c_str()
+    );
+tmpLogger (tmp_buffer);
+snprintf (tmp_buffer,500000, "%s : S2.2 config |%s|"
+    ,__FUNCTION__
+	,config.toJSON().c_str()
+
+    );
+tmpLogger (tmp_buffer);
+snprintf (tmp_buffer,500000, "%s : S2.3 deliveryConfig |%s| "
+    ,__FUNCTION__
+	,deliveryConfig.toJSON().c_str()
+
+    );
+tmpLogger (tmp_buffer);
+
+
+
 			success = addDelivery(config, categoryName, deliveryConfig);
 
 			Logger::getLogger()->debug("%s - found categoryName :%s:", __FUNCTION__, categoryName.c_str() );
 		}
 	}
+
+	// FIXME_I:
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s S3 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
 
 	return (success);
 }
