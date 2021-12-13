@@ -197,16 +197,6 @@ void NotificationInstance::addDeliveryExtra(
 					   NotificationDelivery* delivery)
 {
 	m_deliveryExtra.push_back(delivery);
-
-
-		// FIXME_I:
-	string _section="xxx14 ";
-
-	// FIXME_I:
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - m_deliveryExtra :%d:", _section.c_str(), __FUNCTION__, m_deliveryExtra.size());
-	Logger::getLogger()->setMinLevel("warning");
-
 }
 
 
@@ -1094,54 +1084,58 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 		return NULL;
 	}
 
-	// Create category names for plugins under instanceName
-	string deliveryCategoryName = getDeliveryCategoryName(name, delivery, extraDelivery, false);
+	if ( ! extraDelivery) {
 
-	// Get plugins default configuration
-	string deliveryPluginConfig = deliveryPlugin->getInfo()->config;
+		// Create category names for plugins under instanceName
+		string deliveryCategoryName = getDeliveryCategoryName(name, delivery, extraDelivery, false);
 
-	DefaultConfigCategory deliveryDefConfig(deliveryCategoryName,
-						deliveryPluginConfig);
+		// Get plugins default configuration
+		string deliveryPluginConfig = deliveryPlugin->getInfo()->config;
 
-	// Unregister configuration changes
-	// NOTE:
-	// currently unregisterCategory is not called
-	// as we don't change at run time the delivery plugin
-	//m_managerClient->unregisterCategory(deliveryCategoryName);
+		DefaultConfigCategory deliveryDefConfig(deliveryCategoryName,
+							deliveryPluginConfig);
 
-	// Create category, don't merge existing values
-	if (!m_managerClient->addCategory(deliveryDefConfig, false))
-	{
-		string errMsg("Cannot create/update '" + \
-			      deliveryCategoryName + "' delivery plugin category");
-		m_logger->fatal(errMsg.c_str());
+		// Unregister configuration changes
+		// NOTE:
+		// currently unregisterCategory is not called
+		// as we don't change at run time the delivery plugin
+		//m_managerClient->unregisterCategory(deliveryCategoryName);
 
-		delete deliveryPlugin;
-		return NULL;
-	}
+		// Create category, don't merge existing values
+		if (!m_managerClient->addCategory(deliveryDefConfig, false))
+		{
+			string errMsg("Cannot create/update '" + \
+					  deliveryCategoryName + "' delivery plugin category");
+			m_logger->fatal(errMsg.c_str());
 
-	try
-	{
-		// Set new delivery plugin name in "value"
-		m_managerClient->setCategoryItemValue(deliveryCategoryName,
-						      "plugin",
-						      delivery);
+			delete deliveryPlugin;
+			return NULL;
+		}
 
-		// Add ruleCategoryName as child of Notification name
-		vector<string> children;
-		children.push_back(deliveryCategoryName);
-		m_managerClient->addChildCategories(name, children);
+		try
+		{
+			// Set new delivery plugin name in "value"
+			m_managerClient->setCategoryItemValue(deliveryCategoryName,
+								  "plugin",
+								  delivery);
 
-		// Register category for configuration updates
-		m_service->registerCategory(deliveryCategoryName);
-	}
-	catch (std::exception* ex)
-	{
-		string errMsg("Cannot create/update/register '" + \
-			      deliveryCategoryName + "' rule delivery category: " + ex->what());
-		delete ex;
-		delete deliveryPlugin;
-		return NULL;
+			// Add ruleCategoryName as child of Notification name
+			vector<string> children;
+			children.push_back(deliveryCategoryName);
+			m_managerClient->addChildCategories(name, children);
+
+			// Register category for configuration updates
+			m_service->registerCategory(deliveryCategoryName);
+		}
+		catch (std::exception* ex)
+		{
+			string errMsg("Cannot create/update/register '" + \
+					  deliveryCategoryName + "' rule delivery category: " + ex->what());
+			delete ex;
+			delete deliveryPlugin;
+			return NULL;
+		}
+
 	}
 
 	// Return plugin object
@@ -1348,8 +1342,6 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 
 	// Register category for configuration updates
 	m_service->registerCategory(notificationName);
-
-	// FIXME_I:
 	m_service->registerCategoryChild(notificationName);
 
 	return success;
@@ -1363,16 +1355,6 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 	bool success;
 
 	success = true;
-
-
-// FIXME_I:
-string _section="xxx14 ";
-
-// FIXME_I:
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s - deliveryCategoryName :%s:", _section.c_str(), __FUNCTION__, deliveryCategoryName.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
 
 	bool enabled;
 	string rulePluginName;
@@ -1396,8 +1378,7 @@ Logger::getLogger()->setMinLevel("warning");
 	string const notificationName = config.getName();
 
 	// FIXME_I:
-	DeliveryPlugin* deliver = this->createDeliveryPlugin(deliveryPluginName);
-	//DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
+	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
 
 	if (deliver)
 	{
@@ -1463,33 +1444,7 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 	success = true;
 
-	// FIXME_I:
-string _section="xxx14 ";
-
-// FIXME_I:
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s S1 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
-
-
 	string notificationName = config.getName();
-
-	//# FIXME_I:
-char tmp_buffer[500000];
-snprintf (tmp_buffer,500000, "%s : S1.1 name |%s| notificationName |%s|"
-    ,__FUNCTION__
-    ,categoryName.c_str()
-	,notificationName.c_str()
-    );
-tmpLogger (tmp_buffer);
-snprintf (tmp_buffer,500000, "%s : S1.2 config |%s| "
-    ,__FUNCTION__
-	,config.toJSON().c_str()
-    );
-tmpLogger (tmp_buffer);
-
-
 
 	prefix = getDeliveryCategoryName(notificationName, "", true, true);
 
@@ -1504,45 +1459,11 @@ tmpLogger (tmp_buffer);
 
 			ConfigCategory deliveryConfig = m_managerClient->getCategory(categoryName);
 
-// FIXME_I:
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s S2 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
-//# FIXME_I:
-char tmp_buffer[500000];
-snprintf (tmp_buffer,500000, "%s : S2.1  notificationName |%s| categoryName |%s|"
-    ,__FUNCTION__
-	,notificationName.c_str()
-    ,categoryName.c_str()
-    );
-tmpLogger (tmp_buffer);
-snprintf (tmp_buffer,500000, "%s : S2.2 config |%s|"
-    ,__FUNCTION__
-	,config.toJSON().c_str()
-
-    );
-tmpLogger (tmp_buffer);
-snprintf (tmp_buffer,500000, "%s : S2.3 deliveryConfig |%s| "
-    ,__FUNCTION__
-	,deliveryConfig.toJSON().c_str()
-
-    );
-tmpLogger (tmp_buffer);
-
-
-
 			success = addDelivery(config, categoryName, deliveryConfig);
 
 			Logger::getLogger()->debug("%s - found categoryName :%s:", __FUNCTION__, categoryName.c_str() );
 		}
 	}
-
-	// FIXME_I:
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s S3 - name :%s:", _section.c_str(), __FUNCTION__, name.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
 
 	return (success);
 }
