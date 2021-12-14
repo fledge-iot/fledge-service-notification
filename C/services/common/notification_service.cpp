@@ -344,9 +344,7 @@ void NotificationService::configChangeChild(const string& categoryName,
 
 
 // FIXME_I:
-string _section="xxx13 ";
-
-// FIXME_I:
+string _section="xxx14 ";
 Logger::getLogger()->setMinLevel("debug");
 Logger::getLogger()->debug("%s / %s -  S1 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
 Logger::getLogger()->setMinLevel("warning");
@@ -355,16 +353,32 @@ Logger::getLogger()->setMinLevel("warning");
 		notifications->lockInstances();
 		instance = notifications->getNotificationInstance(categoryName);
 		notifications->unlockInstances();
+
+//		if (instance && instance->getDeliveryPlugin())
+//		{
+//			// FIXME_I:
+//			Logger::getLogger()->setMinLevel("debug");
+//			Logger::getLogger()->debug("%s / %s -  S2 Reconfigure", _section.c_str(), __FUNCTION__);
+//			Logger::getLogger()->setMinLevel("warning");
+//
+//			// Call plugin reconfigure
+//			instance->getDeliveryPlugin()->reconfigure(category);
+//		}
+//		else
 		if (instance)
 		{
+			// FIXME_I:
+			Logger::getLogger()->setMinLevel("debug");
+			Logger::getLogger()->debug("%s / %s -  S3 setup new", _section.c_str(), __FUNCTION__);
+			Logger::getLogger()->setMinLevel("warning");
+
 			notifications->setupDeliveryExtra(categoryName, config);
 		}
 
-		// FIXME_I:
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s -  S2 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
+	// FIXME_I:
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s -  S4 end", _section.c_str(), __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
 
 	if (instance == NULL)
 	{
@@ -523,15 +537,6 @@ void NotificationService::registerCategory(const string& categoryName)
 // FIXME_I:
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
-
-	// FIXME_I:
-	string _section="xxx8 ";
-
-	// FIXME_I:
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - START categoryName :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str());
-	Logger::getLogger()->setMinLevel("warning");
-
 
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once
