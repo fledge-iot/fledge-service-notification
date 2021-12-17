@@ -38,8 +38,10 @@ class NotificationService : public ServiceHandler
 		void 			stop();
 		void			shutdown();
 		void			cleanupResources();
-		void			configChange(const std::string&,
-						     const std::string&);
+		void			configChange(const std::string&,const std::string&);
+		void            configChangeBase(const string& categoryName,const string& category);
+		void            configChangeDeliveryExtra(const string& categoryName,const string& category);
+
 		void			configChangeChild(const std::string&,
 						     const std::string&);
 		void			registerCategory(const std::string& categoryName);

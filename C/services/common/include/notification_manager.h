@@ -289,7 +289,7 @@ class NotificationManager
 
 		bool setupRuleDeliveryFirst(const string& name, const ConfigCategory& config);
 		bool setupDeliveryExtra(const string& name, const ConfigCategory& config);
-		bool addDelivery(const ConfigCategory& config, string &deliveryCategoryName, ConfigCategory &deliveryConfig);
+		bool addDelivery(const ConfigCategory& config, const string &deliveryCategoryName, ConfigCategory &deliveryConfig);
 
 		bool			removeInstance(const string& instanceName);
 		void			lockInstances() { m_instancesMutex.lock(); };

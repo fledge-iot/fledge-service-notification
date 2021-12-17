@@ -25,6 +25,9 @@
 #include <notification_subscription.h>
 #include <delivery_queue.h>
 
+//# FIXME_I:
+#include <tmp_log.hpp>
+
 using namespace std;
 
 /**
@@ -323,35 +326,53 @@ void NotificationService::cleanupResources()
 	m_managementApi->stop();
 }
 
-// FIXME_I:
-/**
- * Configuration change notification
- *
- * @param    categoryName	The category name which configuration has been changed
- * @param    category		The JSON string with new configuration
- */
 void NotificationService::configChangeChild(const string& categoryName,
 				       const string& category)
 {
-	NotificationManager* notifications = NotificationManager::getInstance();
-	NotificationInstance* instance = NULL;
-
-	ConfigCategory config(categoryName, category);
-
-	std::size_t found;
-
-	std::size_t foundRule = categoryName.find("rule");
-
 
 // FIXME_I:
-string _section="xxx14 ";
+string _section="xxx15 ";
 Logger::getLogger()->setMinLevel("debug");
 Logger::getLogger()->debug("%s / %s -  S1 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
 Logger::getLogger()->setMinLevel("warning");
 
+
+}
+
+// FIXME_I:
+void NotificationService::configChangeDeliveryExtra(const string& categoryName, const string& category)
+{
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = categoryName.substr(0, categoryName.find(CATEGORY_DELIVERY_EXTRA));
+
+// FIXME_I:
+string _section="xxx15 ";
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s -  S2 categoryName :%s: notificationName :%s:", _section.c_str(), __FUNCTION__,
+	categoryName.c_str(),
+	notificationName.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
+
+
+//# FIXME_I:
+char tmp_buffer[500000];
+snprintf (tmp_buffer,500000, "%s / %s : categoryName |%s| category  |%s|"
+	,_section.c_str()
+    ,__FUNCTION__
+    ,categoryName.c_str()
+	,category.c_str()
+    );
+tmpLogger (tmp_buffer);
+
+
+
 		// It's a notification category
 		notifications->lockInstances();
-		instance = notifications->getNotificationInstance(categoryName);
+		instance = notifications->getNotificationInstance(notificationName);
 		notifications->unlockInstances();
 
 //		if (instance && instance->getDeliveryPlugin())
@@ -367,12 +388,19 @@ Logger::getLogger()->setMinLevel("warning");
 //		else
 		if (instance)
 		{
+			ConfigCategory config(categoryName, category);
+
 			// FIXME_I:
 			Logger::getLogger()->setMinLevel("debug");
-			Logger::getLogger()->debug("%s / %s -  S3 setup new", _section.c_str(), __FUNCTION__);
+			Logger::getLogger()->debug("%s / %s -  S3 setup new categoryName :%s: config :%s:", _section.c_str()
+									   , __FUNCTION__
+									   ,categoryName.c_str()
+									   ,category.c_str());
 			Logger::getLogger()->setMinLevel("warning");
 
-			notifications->setupDeliveryExtra(categoryName, config);
+			ConfigCategory notificationConfig = m_managerClient->getCategory(notificationName);
+
+			notifications->addDelivery(notificationConfig, categoryName, config);
 		}
 
 	// FIXME_I:
@@ -386,13 +414,7 @@ Logger::getLogger()->setMinLevel("warning");
 	}
 }
 
-/**
- * Configuration change notification
- *
- * @param    categoryName	The category name which configuration has been changed
- * @param    category		The JSON string with new configuration
- */
-void NotificationService::configChange(const string& categoryName,
+void NotificationService::configChangeBase(const string& categoryName,
 				       const string& category)
 {
 
@@ -409,6 +431,13 @@ void NotificationService::configChange(const string& categoryName,
 		}
 		return;
 	}
+
+	// FIXME_I:
+string _section="xxx14 ";
+Logger::getLogger()->setMinLevel("debug");
+Logger::getLogger()->debug("%s / %s -  S1 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
+Logger::getLogger()->setMinLevel("warning");
+
 
 	std::size_t found;
 
@@ -513,6 +542,28 @@ void NotificationService::configChange(const string& categoryName,
 	{
 		// Log message
 	}
+
+
+}
+/**
+ * Configuration change notification
+ *
+ * @param    categoryName	The category name which configuration has been changed
+ * @param    category		The JSON string with new configuration
+ */
+void NotificationService::configChange(const string& categoryName,
+				       const string& category)
+{
+
+	if (categoryName.find(CATEGORY_DELIVERY_EXTRA) != std::string::npos)
+	{
+		configChangeDeliveryExtra (categoryName,category);
+	}
+	else
+	{
+		configChangeBase(categoryName, category);
+	}
+
 }
 
 
@@ -523,6 +574,14 @@ void NotificationService::configChange(const string& categoryName,
  */
 void NotificationService::registerCategory(const string& categoryName)
 {
+
+	// FIXME_I:
+	string _section="xxx10 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - S1 categoryName :%s: ", _section.c_str(), __FUNCTION__, categoryName.c_str() );
+	Logger::getLogger()->setMinLevel("warning");
+
+
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once
 	if (configHandler &&
@@ -537,6 +596,13 @@ void NotificationService::registerCategory(const string& categoryName)
 // FIXME_I:
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
+		// FIXME_I:
+	string _section="xxx10 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - S1 categoryName :%s: ", _section.c_str(), __FUNCTION__, categoryName.c_str() );
+	Logger::getLogger()->setMinLevel("warning");
+
+
 
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once

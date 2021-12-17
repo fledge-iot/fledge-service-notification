@@ -1340,6 +1340,14 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 				  NULL);
 	}
 
+
+	// FIXME_I:
+	string _section="xxx9 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - S0 categoryName :%s: ", _section.c_str(), __FUNCTION__, notificationName.c_str() );
+	Logger::getLogger()->setMinLevel("warning");
+
+
 	// Register category for configuration updates
 	m_service->registerCategory(notificationName);
 	m_service->registerCategoryChild(notificationName);
@@ -1349,7 +1357,7 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 
 
 // FIXME_I:
-bool NotificationManager::addDelivery(const ConfigCategory& config, string &deliveryCategoryName, ConfigCategory &deliveryConfig)
+bool NotificationManager::addDelivery(const ConfigCategory& config, const string &deliveryCategoryName, ConfigCategory &deliveryConfig)
 {
 
 	bool success;
@@ -1376,6 +1384,32 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, string &deli
 	deliveryPluginName = deliveryConfig.getValue("plugin");
 
 	string const notificationName = config.getName();
+
+
+	// FIXME_I:
+	string _section="xxx15 ";
+	Logger::getLogger()->setMinLevel("debug");
+
+
+//# FIXME_I:
+char tmp_buffer[500000];
+snprintf (tmp_buffer,500000, "%s / %s - S2 deliveryCategoryName :%s: config :%s: "
+    ,_section.c_str(), __FUNCTION__
+	, deliveryCategoryName.c_str()
+	, config.toJSON().c_str()
+	);
+
+tmpLogger (tmp_buffer);
+
+snprintf (tmp_buffer,500000, "%s / %s - S2 deliveryCategoryName  :%s:   deliveryConfig :%s:"
+    ,_section.c_str(), __FUNCTION__
+	, deliveryCategoryName.c_str()
+	, deliveryConfig.toJSON().c_str());
+
+tmpLogger (tmp_buffer);
+
+	Logger::getLogger()->debug(tmp_buffer);
+	Logger::getLogger()->setMinLevel("warning");
 
 	// FIXME_I:
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
@@ -1446,6 +1480,21 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 	string notificationName = config.getName();
 
+
+//# FIXME_I:
+string _section="xxx15 ";
+char tmp_buffer[500000];
+snprintf (tmp_buffer,500000, "%s / %s - S2 name :%s: notificationName :%s:"
+    ,_section.c_str(), __FUNCTION__
+	, name.c_str()
+	, notificationName.c_str()
+	);
+
+//tmpLogger (tmp_buffer);
+Logger::getLogger()->debug(tmp_buffer);
+Logger::getLogger()->setMinLevel("warning");
+
+
 	prefix = getDeliveryCategoryName(notificationName, "", true, true);
 
 	ConfigCategories categories = m_managerClient->getChildCategories(notificationName);
@@ -1481,6 +1530,13 @@ bool NotificationManager::setupInstance(const string& name,
 					const ConfigCategory& config)
 {
 	 bool success;
+
+	 	// FIXME_I:
+	string _section="xxx10 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - name :%s: ", _section.c_str(), __FUNCTION__, name.c_str() );
+	Logger::getLogger()->setMinLevel("warning");
+
 
 	success = setupRuleDeliveryFirst (name, config);
 
