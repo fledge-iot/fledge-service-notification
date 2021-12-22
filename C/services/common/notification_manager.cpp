@@ -1387,7 +1387,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 
 
 	// FIXME_I:
-	string _section="xxx15 ";
+	string _section="xxx23 ";
 	Logger::getLogger()->setMinLevel("debug");
 
 
