@@ -27,10 +27,6 @@
 #include <delivery_queue.h>
 
 
-//# FIXME_I:
-#include <tmp_log.hpp>
-
-
 using namespace std;
 
 extern "C" {
@@ -191,7 +187,13 @@ NotificationInstance::NotificationInstance(const string& name,
 	m_state = NotificationInstance::StateCleared;
 }
 
-// FIXME_I:
+/**
+ * Add an extra delivery channel
+ *
+ * @param    type	Notification type:
+ *			"one shot", "retriggered", "toggled"
+ * @param    delivery	The NotificationDelivery for this instance
+ */
 void NotificationInstance::addDeliveryExtra(
 					   NotificationType type,
 					   NotificationDelivery* delivery)
@@ -391,7 +393,12 @@ void NotificationManager::addInstance(const string& instanceName,
 }
 
 
-// FIXME_I:
+/**
+ * Add an extra delivery channel
+ *
+ * @param    instanceName	The instance name
+ * @param    delivery		Pointer to the associated NotificationDelivery
+ */
 void NotificationManager::addDeliveryExtra(
 	const string& instanceName,
 	NOTIFICATION_TYPE type,
@@ -1045,17 +1052,25 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
 	return rulePlugin;
 }
 
-// FIXME_I:
+/**
+ * Generate the name of the delivery for the first or the extra ones
+ *
+ * @param    NotificationName	The instance name
+ * @param    delivery		    Name of the delivery
+ * @param    extraDelivery		True = it is an extra delivery channel
+ * @param    prefixOnly		    For extra delivery only, True = without the delivery name
+ */
+ // FIXME_I:
 string NotificationManager::getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly) {
 
 	string deliveryCategoryName;
 
 	if (extraDelivery) {
-		if (extraDelivery)
+		if (prefixOnly)
 		{
-			deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA + delivery;
-		} else {
 			deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA;
+		} else {
+			deliveryCategoryName = NotificationName + CATEGORY_DELIVERY_EXTRA + delivery;
 		}
 	} else {
 		deliveryCategoryName = CATEGORY_DELIVERY_PREFIX + NotificationName;
@@ -1231,7 +1246,14 @@ bool NotificationManager::createInstance(const string& name,
 	return this->setupInstance(name, config);
 }
 
-// FIXME_I:
+/**
+ * Create and add a new Notification instance to instances map.
+ * Register also interest for configuration changes.
+ *
+ * @param    name		The instance name to create.
+ * @param    config		The configuration for the new instance.
+ * @return			True on success, false otherwise.
+ */
 bool NotificationManager::setupRuleDeliveryFirst(const string& name, const ConfigCategory& config) {
 
 	bool success;
@@ -1340,14 +1362,6 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 				  NULL);
 	}
 
-
-	// FIXME_I:
-	string _section="xxx9 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - S0 categoryName :%s: ", _section.c_str(), __FUNCTION__, notificationName.c_str() );
-	Logger::getLogger()->setMinLevel("warning");
-
-
 	// Register category for configuration updates
 	m_service->registerCategory(notificationName);
 	m_service->registerCategoryChild(notificationName);
@@ -1356,7 +1370,14 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 }
 
 
-// FIXME_I:
+/**
+ * Add an delivery to a notification instance
+ *
+ * @param    config		          The configuration for the new instance.
+ * @param    deliveryCategoryName The delivery name
+ * @param    config	              The configuration ofr the delivery.
+ * @return			True on success, false otherwise.
+ */
 bool NotificationManager::addDelivery(const ConfigCategory& config, const string &deliveryCategoryName, ConfigCategory &deliveryConfig)
 {
 
@@ -1384,32 +1405,6 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 	deliveryPluginName = deliveryConfig.getValue("plugin");
 
 	string const notificationName = config.getName();
-
-
-	// FIXME_I:
-	string _section="xxx23 ";
-	Logger::getLogger()->setMinLevel("debug");
-
-
-//# FIXME_I:
-char tmp_buffer[500000];
-snprintf (tmp_buffer,500000, "%s / %s - S2 deliveryCategoryName :%s: config :%s: "
-    ,_section.c_str(), __FUNCTION__
-	, deliveryCategoryName.c_str()
-	, config.toJSON().c_str()
-	);
-
-tmpLogger (tmp_buffer);
-
-snprintf (tmp_buffer,500000, "%s / %s - S2 deliveryCategoryName  :%s:   deliveryConfig :%s:"
-    ,_section.c_str(), __FUNCTION__
-	, deliveryCategoryName.c_str()
-	, deliveryConfig.toJSON().c_str());
-
-tmpLogger (tmp_buffer);
-
-	Logger::getLogger()->debug(tmp_buffer);
-	Logger::getLogger()->setMinLevel("warning");
 
 	// FIXME_I:
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
@@ -1469,7 +1464,13 @@ tmpLogger (tmp_buffer);
 
 }
 
-// FIXME_I:
+/**
+ * Identifies and add extra deliveries channels for a notification istance
+ *
+ * @param    name		The instance name to manage.
+ * @param    config		The configuration for the new instance.
+ * @return			True on success, false otherwise.
+ */
 bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCategory& config) {
 
 	bool success;
@@ -1479,20 +1480,6 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 	success = true;
 
 	string notificationName = config.getName();
-
-
-//# FIXME_I:
-string _section="xxx15 ";
-char tmp_buffer[500000];
-snprintf (tmp_buffer,500000, "%s / %s - S2 name :%s: notificationName :%s:"
-    ,_section.c_str(), __FUNCTION__
-	, name.c_str()
-	, notificationName.c_str()
-	);
-
-//tmpLogger (tmp_buffer);
-Logger::getLogger()->debug(tmp_buffer);
-Logger::getLogger()->setMinLevel("warning");
 
 
 	prefix = getDeliveryCategoryName(notificationName, "", true, true);
@@ -1519,8 +1506,8 @@ Logger::getLogger()->setMinLevel("warning");
 
 
 /**
- * Create and add a new Notification instance to instances map.
- * Register also interest for configuration changes.
+ * Create and add a new Notification instance.
+ * Creates the first delivery and rule and extra deliveries if needed
  *
  * @param    name		The instance name to create.
  * @param    config		The configuration for the new instance.
@@ -1530,13 +1517,6 @@ bool NotificationManager::setupInstance(const string& name,
 					const ConfigCategory& config)
 {
 	 bool success;
-
-	 	// FIXME_I:
-	string _section="xxx10 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - name :%s: ", _section.c_str(), __FUNCTION__, name.c_str() );
-	Logger::getLogger()->setMinLevel("warning");
-
 
 	success = setupRuleDeliveryFirst (name, config);
 

@@ -25,9 +25,6 @@
 #include <notification_subscription.h>
 #include <delivery_queue.h>
 
-//# FIXME_I:
-#include <tmp_log.hpp>
-
 using namespace std;
 
 /**
@@ -335,27 +332,6 @@ void NotificationService::configChangeChild(const std::string& parent_category, 
 
 	notificationName = parent_category;
 
-// FIXME_I:
-string _section="xxx22 ";
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s -  S1 notificationName :%s: categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__
-						   ,notificationName.c_str()
-						   ,categoryName.c_str()
-						   ,category.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
-//# FIXME_I:
-char tmp_buffer[500000];
-snprintf (tmp_buffer,500000, "%s / %s : categoryName |%s| category  |%s|"
-	,_section.c_str()
-    ,__FUNCTION__
-    ,categoryName.c_str()
-	,category.c_str()
-    );
-tmpLogger (tmp_buffer);
-
-
-
 		// It's a notification category
 		notifications->lockInstances();
 		instance = notifications->getNotificationInstance(notificationName);
@@ -376,23 +352,10 @@ tmpLogger (tmp_buffer);
 		{
 			ConfigCategory config(categoryName, category);
 
-			// FIXME_I:
-			Logger::getLogger()->setMinLevel("debug");
-			Logger::getLogger()->debug("%s / %s -  S2 setup new categoryName :%s: config :%s:", _section.c_str()
-									   , __FUNCTION__
-									   ,categoryName.c_str()
-									   ,category.c_str());
-			Logger::getLogger()->setMinLevel("warning");
-
 			ConfigCategory notificationConfig = m_managerClient->getCategory(notificationName);
 
 			notifications->addDelivery(notificationConfig, categoryName, config);
 		}
-
-	// FIXME_I:
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s -  S3 end", _section.c_str(), __FUNCTION__);
-	Logger::getLogger()->setMinLevel("warning");
 
 	if (instance == NULL)
 	{
@@ -424,13 +387,6 @@ void NotificationService::configChange(const string& categoryName,
 		}
 		return;
 	}
-
-	// FIXME_I:
-string _section="xxx20 ";
-Logger::getLogger()->setMinLevel("debug");
-Logger::getLogger()->debug("%s / %s -  S1 categoryName :%s: category :%s:", _section.c_str(), __FUNCTION__, categoryName.c_str(), category.c_str());
-Logger::getLogger()->setMinLevel("warning");
-
 
 	std::size_t found;
 
@@ -547,13 +503,6 @@ Logger::getLogger()->setMinLevel("warning");
 void NotificationService::registerCategory(const string& categoryName)
 {
 
-	// FIXME_I:
-	string _section="xxx10 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - S1 categoryName :%s: ", _section.c_str(), __FUNCTION__, categoryName.c_str() );
-	Logger::getLogger()->setMinLevel("warning");
-
-
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once
 	if (configHandler &&
@@ -568,14 +517,6 @@ void NotificationService::registerCategory(const string& categoryName)
 // FIXME_I:
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
-		// FIXME_I:
-	string _section="xxx10 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - S1 categoryName :%s: ", _section.c_str(), __FUNCTION__, categoryName.c_str() );
-	Logger::getLogger()->setMinLevel("warning");
-
-
-
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
 	// Call registerCategory only once
 	if (configHandler &&

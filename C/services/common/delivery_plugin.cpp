@@ -133,12 +133,6 @@ bool DeliveryPlugin::deliver(const std::string& deliveryName,
  */
 void DeliveryPlugin::reconfigure(const string& newConfig)
 {
-	// FIXME_I:
-	const char *_section="xxx7";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - xxx newConfig :%s:", _section, __FUNCTION__, newConfig.c_str());
-	Logger::getLogger()->setMinLevel("warning");
-
 	if (this->pluginReconfigurePtr)
 	{
 		ConfigCategory reconfig("new_cfg", newConfig);
