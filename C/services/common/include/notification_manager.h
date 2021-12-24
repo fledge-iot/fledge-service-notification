@@ -279,6 +279,7 @@ class NotificationManager
 		RulePlugin*		createRuleCategory(const std::string& name,
 							   const std::string& rule);
 		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
+		DeliveryPlugin*		deleteDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
 		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly);
 
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);

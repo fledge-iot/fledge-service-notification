@@ -122,6 +122,19 @@ void notificationCreateNotificationDelivery(shared_ptr<HttpServer::Response> res
 				   request);
 }
 
+// FIXME_I:
+/**
+ * Wrapper for POST /notification/{NotificationName}/delivery/{DeliveryName}
+ */
+void notificationDeleteNotificationDelivery(shared_ptr<HttpServer::Response> response,
+				    shared_ptr<HttpServer::Request> request)
+{
+	NotificationApi* api = NotificationApi::getInstance();
+	api->getNotificationObject(NotificationApi::ObjDeleteNotificationDelivery,
+				   response,
+				   request);
+}
+
 /**
  * Wrapper for DELETE /notification/{NotificationName}
  */
@@ -264,7 +277,10 @@ void NotificationApi::initResources()
 	m_server->resource[POST_NOTIFICATION_NAME]["POST"] = notificationCreateNotification;
 	m_server->resource[POST_NOTIFICATION_RULE_NAME]["POST"] = notificationCreateNotificationRule;
 	m_server->resource[POST_NOTIFICATION_DELIVERY_NAME]["POST"] = notificationCreateNotificationDelivery;
+	// FIXME_I:
+	m_server->resource[POST_NOTIFICATION_DELIVERY_NAME]["DELETE"] = notificationDeleteNotificationDelivery;
 	m_server->resource[POST_NOTIFICATION_NAME]["DELETE"] = notificationDeleteNotification;
+
 
 	// Handle errors
 	m_server->default_resource["GET"] = defaultWrapper;
@@ -486,6 +502,26 @@ void NotificationApi::getNotificationObject(NOTIFICATION_OBJECT object,
 						  "{\"error\": \"create delivery failure\"}";;
 			}
 			break;
+
+		case ObjDeleteNotificationDelivery:
+			{
+				string name = urlDecode(request->path_match[NOTIFICATION_NAME_COMPONENT]);
+				string delivery = request->path_match[DELIVERY_NAME_COMPONENT];
+
+				// FIXME_I:
+				string _section="xxx9 ";
+				Logger::getLogger()->setMinLevel("debug");
+				Logger::getLogger()->debug("%s / %s - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, name.c_str(),delivery.c_str());
+				Logger::getLogger()->setMinLevel("warning");
+
+				bool ret = this->deleteNotificationDelivery(name, delivery);
+				responsePayload = ret ?
+						 "{\"message\": \"created\"}" :
+						  "{\"error\": \"create delivery failure\"}";;
+			}
+			break;
+
+
 		case ObjDeleteNotification:
 			{
 				string name = request->path_match[NOTIFICATION_NAME_COMPONENT];
@@ -597,6 +633,32 @@ bool NotificationApi::createNotificationDelivery(const string& name,
 
 	return ret;
 }
+
+// FIXME_I:
+bool NotificationApi::deleteNotificationDelivery(const string& name,const string& delivery)
+{
+	bool ret = false;
+
+		// FIXME_I:
+	string _section="xxx9 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s S2 - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, name.c_str(),delivery.c_str());
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	// Get NotificationManager instance
+	NotificationManager* manager = NotificationManager::getInstance();
+	if (manager)
+	{
+		DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(name, delivery);
+		ret = deliveryPlugin != NULL;
+		// Delete plugin object
+		delete deliveryPlugin;
+	}
+
+	return ret;
+}
+
 
 /**
  * Remove a notification instance

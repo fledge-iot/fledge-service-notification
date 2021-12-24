@@ -1157,6 +1157,23 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 	return deliveryPlugin;
 }
 
+// FIXME_I:
+DeliveryPlugin* NotificationManager::deleteDeliveryCategory(const string& name, const string& delivery, bool extraDelivery)
+{
+	DeliveryPlugin* deliveryPlugin = this->createDeliveryPlugin(delivery);
+
+		// FIXME_I:
+	string _section="xxx9 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s S3 - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, name.c_str(),delivery.c_str());
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	// Return plugin object
+	return deliveryPlugin;
+}
+
+
 /**
  * Reconfigure a notification instance
  *
