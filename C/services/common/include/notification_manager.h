@@ -208,7 +208,7 @@ class NotificationInstance
 		{
 			return (m_delivery ? m_delivery->getPlugin() : NULL);
 		};
-		vector<NotificationDelivery*>		getDeliveryExtra()
+		std::map<std::string, NotificationDelivery *> getDeliveryExtra()
 		{
 			return (m_deliveryExtra);
 		};
@@ -239,6 +239,7 @@ class NotificationInstance
 		bool			isZombie() { return m_zombie; };
 		NotificationState	getState() { return m_state; };
 		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
+		void deleteDeliveryExtra(const std::string &deliveryName);
 
 	private:
 		const std::string	m_name;
@@ -246,7 +247,9 @@ class NotificationInstance
 		NotificationType	m_type;
 		NotificationRule*	m_rule;
 		NotificationDelivery*	        m_delivery;
-		vector<NotificationDelivery*>	m_deliveryExtra;
+		std::map<std::string, NotificationDelivery *>
+					m_deliveryExtra;
+
 		time_t			m_lastSent;
 		NotificationState	m_state;
 		bool			m_zombie;
@@ -279,7 +282,7 @@ class NotificationManager
 		RulePlugin*		createRuleCategory(const std::string& name,
 							   const std::string& rule);
 		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
-		DeliveryPlugin*		deleteDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
+		DeliveryPlugin*		deleteDeliveryCategory(const std::string& name, const std::string& deliveryName, bool extraDelivery=false);
 		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly);
 
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);

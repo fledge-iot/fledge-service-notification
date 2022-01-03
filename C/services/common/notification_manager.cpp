@@ -198,7 +198,48 @@ void NotificationInstance::addDeliveryExtra(
 					   NotificationType type,
 					   NotificationDelivery* delivery)
 {
-	m_deliveryExtra.push_back(delivery);
+
+	m_deliveryExtra.insert( std::make_pair(delivery->getName(), delivery));
+}
+
+// FIXME_I:
+void NotificationInstance::deleteDeliveryExtra(const std::string &deliveryName)
+{
+
+	// FIXME_I:
+	string _section="xxx9 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s S4 - deliveryName :%s:", _section.c_str(), __FUNCTION__,  deliveryName.c_str());
+	Logger::getLogger()->setMinLevel("warning");
+
+		// FIXME_I:
+	for (auto it=m_deliveryExtra.begin(); it!=m_deliveryExtra.end(); ++it)
+	{
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s S5 - LIST deliveryName :%s: ", _section.c_str(), __FUNCTION__,  it->first.c_str());
+		Logger::getLogger()->setMinLevel("warning");
+
+	}
+
+	auto item = m_deliveryExtra.find(deliveryName);
+	if (item != m_deliveryExtra.end())
+	{
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s S5 - DELETE deliveryName :%s: ", _section.c_str(), __FUNCTION__,  item->first.c_str());
+		Logger::getLogger()->setMinLevel("warning");
+
+		m_deliveryExtra.erase(item);
+	}
+
+	// FIXME_I:
+	for (auto it=m_deliveryExtra.begin(); it!=m_deliveryExtra.end(); ++it)
+	{
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s S5 - LIST deliveryName :%s: ", _section.c_str(), __FUNCTION__,  it->first.c_str());
+		Logger::getLogger()->setMinLevel("warning");
+
+	}
+
 }
 
 
@@ -1158,19 +1199,33 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 }
 
 // FIXME_I:
-DeliveryPlugin* NotificationManager::deleteDeliveryCategory(const string& name, const string& delivery, bool extraDelivery)
+DeliveryPlugin* NotificationManager::deleteDeliveryCategory(const string& instanceName, const string& deliveryName, bool extraDelivery)
 {
-	DeliveryPlugin* deliveryPlugin = this->createDeliveryPlugin(delivery);
 
 		// FIXME_I:
 	string _section="xxx9 ";
 	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s S3 - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, name.c_str(),delivery.c_str());
+	Logger::getLogger()->debug("%s / %s S3 - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, instanceName.c_str(), deliveryName.c_str());
 	Logger::getLogger()->setMinLevel("warning");
+
+	// Protect changes to m_instances
+	lock_guard<mutex> guard(m_instancesMutex);
+	auto instance = m_instances.find(instanceName);
+	if (instance != m_instances.end())
+	{
+		string fullName = getDeliveryCategoryName(instanceName, deliveryName, true, false);
+
+		instance->second->deleteDeliveryExtra(fullName);
+	}
+	else
+	{
+		 Logger::getLogger()->error("Cannot setup new delivery for key %s",
+						instanceName.c_str());
+	}
 
 
 	// Return plugin object
-	return deliveryPlugin;
+	return NULL;
 }
 
 

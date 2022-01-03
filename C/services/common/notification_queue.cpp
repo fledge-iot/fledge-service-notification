@@ -1266,13 +1266,19 @@ static void deliverNotificationsExtra(
 	// Get delivery queue object
 	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
 
-	vector<NotificationDelivery*> deliveryExtra = instance->getDeliveryExtra();
+	std::map<std::string, NotificationDelivery *> deliveryExtra = instance->getDeliveryExtra();
 
 	for(auto &delivery : deliveryExtra) {
 
-		DeliveryPlugin* plugin = delivery->getPlugin();
+		// FIXME_I:
+		string _section="xxx6 ";
+		Logger::getLogger()->setMinLevel("debug");
+		Logger::getLogger()->debug("%s / %s - deliveryName :%s: ", _section.c_str(), __FUNCTION__,  delivery.first.c_str());
+		Logger::getLogger()->setMinLevel("warning");
 
-		sendNotification(delivery, plugin, rule, reason);
+		DeliveryPlugin* plugin = delivery.second->getPlugin();
+
+		sendNotification(delivery.second, plugin, rule, reason);
 	}
 
 }
