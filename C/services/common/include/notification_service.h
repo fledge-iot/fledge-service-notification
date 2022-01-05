@@ -39,7 +39,7 @@ class NotificationService : public ServiceHandler
 		void			shutdown();
 		void			cleanupResources();
 		void			configChange(const std::string&,const std::string&);
-		void			configChangeChild(const std::string& parent_category,const std::string&, const std::string&);
+		void			configChildCreate(const std::string& parent_category,const std::string&, const std::string&);
 
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);

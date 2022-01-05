@@ -323,8 +323,15 @@ void NotificationService::cleanupResources()
 	m_managementApi->stop();
 }
 
-void NotificationService::configChangeChild(const std::string& parent_category, const string& categoryName, const string& category)
+void NotificationService::configChildCreate(const std::string& parent_category, const string& categoryName, const string& category)
 {
+
+	// FIXME_I:
+	string _section="xxx6 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s - NotificationService configChildCreate ::", _section.c_str(), __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
 
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
