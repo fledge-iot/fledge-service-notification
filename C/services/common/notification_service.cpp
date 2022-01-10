@@ -371,6 +371,61 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 // ###   #########################################################################################:
 }
 
+void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
+{
+
+	// FIXME_I:
+	string _section="xxx8 ";
+	Logger::getLogger()->setMinLevel("debug");
+	Logger::getLogger()->debug("%s / %s S1", _section.c_str(), __FUNCTION__);
+	Logger::getLogger()->setMinLevel("warning");
+
+
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = parent_category;
+
+		// It's a notification category
+		notifications->lockInstances();
+		instance = notifications->getNotificationInstance(notificationName);
+		notifications->unlockInstances();
+
+//		if (instance && instance->getDeliveryPlugin())
+//		{
+//			// FIXME_I:
+//			Logger::getLogger()->setMinLevel("debug");
+//			Logger::getLogger()->debug("%s / %s -  S2 Reconfigure", _section.c_str(), __FUNCTION__);
+//			Logger::getLogger()->setMinLevel("warning");
+//
+//			// Call plugin reconfigure
+//			instance->getDeliveryPlugin()->reconfigure(category);
+//		}
+//		else
+		if (instance)
+		{
+			bool ret = false;
+
+			Logger::getLogger()->setMinLevel("debug");
+			Logger::getLogger()->debug("%s / %s DELETE %s %s", _section.c_str(), __FUNCTION__, notificationName.c_str(), categoryName.c_str());
+			Logger::getLogger()->setMinLevel("warning");
+
+			NotificationManager* manager = NotificationManager::getInstance();
+			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName, categoryName);
+
+			ret = deliveryPlugin != NULL;
+			// Delete plugin object
+			delete deliveryPlugin;
+		}
+
+	if (instance == NULL)
+	{
+		// Log message
+	}
+// ###   #########################################################################################:
+}
+
 /**
  * Configuration change notification
  *
