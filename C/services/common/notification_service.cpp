@@ -323,15 +323,11 @@ void NotificationService::cleanupResources()
 	m_managementApi->stop();
 }
 
+/**
+ * Create an extra delivery
+ */
 void NotificationService::configChildCreate(const std::string& parent_category, const string& categoryName, const string& category)
 {
-
-	// FIXME_I:
-	string _section="xxx6 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s - NotificationService configChildCreate ::", _section.c_str(), __FUNCTION__);
-	Logger::getLogger()->setMinLevel("warning");
-
 
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
@@ -344,17 +340,6 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 		instance = notifications->getNotificationInstance(notificationName);
 		notifications->unlockInstances();
 
-//		if (instance && instance->getDeliveryPlugin())
-//		{
-//			// FIXME_I:
-//			Logger::getLogger()->setMinLevel("debug");
-//			Logger::getLogger()->debug("%s / %s -  S2 Reconfigure", _section.c_str(), __FUNCTION__);
-//			Logger::getLogger()->setMinLevel("warning");
-//
-//			// Call plugin reconfigure
-//			instance->getDeliveryPlugin()->reconfigure(category);
-//		}
-//		else
 		if (instance)
 		{
 			ConfigCategory config(categoryName, category);
@@ -368,18 +353,15 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 	{
 		// Log message
 	}
-// ###   #########################################################################################:
+
 }
 
+
+/**
+ * Delete an extra delivery
+ */
 void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
 {
-
-	// FIXME_I:
-	string _section="xxx8 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s S1", _section.c_str(), __FUNCTION__);
-	Logger::getLogger()->setMinLevel("warning");
-
 
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
@@ -392,24 +374,10 @@ void NotificationService::configChildDelete(const std::string& parent_category, 
 		instance = notifications->getNotificationInstance(notificationName);
 		notifications->unlockInstances();
 
-//		if (instance && instance->getDeliveryPlugin())
-//		{
-//			// FIXME_I:
-//			Logger::getLogger()->setMinLevel("debug");
-//			Logger::getLogger()->debug("%s / %s -  S2 Reconfigure", _section.c_str(), __FUNCTION__);
-//			Logger::getLogger()->setMinLevel("warning");
-//
-//			// Call plugin reconfigure
-//			instance->getDeliveryPlugin()->reconfigure(category);
-//		}
-//		else
+
 		if (instance)
 		{
 			bool ret = false;
-
-			Logger::getLogger()->setMinLevel("debug");
-			Logger::getLogger()->debug("%s / %s DELETE %s %s", _section.c_str(), __FUNCTION__, notificationName.c_str(), categoryName.c_str());
-			Logger::getLogger()->setMinLevel("warning");
 
 			NotificationManager* manager = NotificationManager::getInstance();
 			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName, categoryName);
@@ -423,7 +391,7 @@ void NotificationService::configChildDelete(const std::string& parent_category, 
 	{
 		// Log message
 	}
-// ###   #########################################################################################:
+
 }
 
 /**
@@ -576,7 +544,11 @@ void NotificationService::registerCategory(const string& categoryName)
 	}
 }
 
-// FIXME_I:
+/**
+ * Register the notification for all the child categories of the requested parent one
+ *
+ * @param    categoryName	Parent category for which registation is requested
+ */
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
 	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);

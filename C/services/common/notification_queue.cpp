@@ -1183,7 +1183,10 @@ static void addDataToReason(string& reason, const string& data)
 	}
 }
 
-// FIXME_I:
+/**
+ * Send the notification of a specific extra delivery
+ *
+ */
 static void sendNotification(
 	NotificationDelivery*	delivery,
 	DeliveryPlugin* plugin,
@@ -1249,7 +1252,12 @@ static void sendNotification(
 
 }
 
-// FIXME_I:
+/**
+ * Send the notification to all the extra delivery defined
+ *
+ * @param rule		The data document
+ * @param reason	The reason JSON document
+ */
 static void deliverNotificationsExtra(
 	NotificationRule* rule,
 	string reason
@@ -1269,12 +1277,6 @@ static void deliverNotificationsExtra(
 	std::map<std::string, NotificationDelivery *> deliveryExtra = instance->getDeliveryExtra();
 
 	for(auto &delivery : deliveryExtra) {
-
-		// FIXME_I:
-		string _section="xxx6 ";
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s - deliveryName :%s: ", _section.c_str(), __FUNCTION__,  delivery.first.c_str());
-		Logger::getLogger()->setMinLevel("warning");
 
 		DeliveryPlugin* plugin = delivery.second->getPlugin();
 

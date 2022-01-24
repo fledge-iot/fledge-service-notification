@@ -202,43 +202,21 @@ void NotificationInstance::addDeliveryExtra(
 	m_deliveryExtra.insert( std::make_pair(delivery->getName(), delivery));
 }
 
-// FIXME_I:
+
+/**
+ * Delete an extra  delivery channel
+ *
+ */
 void NotificationInstance::deleteDeliveryExtra(const std::string &deliveryName)
 {
-
-	// FIXME_I:
-	string _section="xxx9 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s S4 - deliveryName :%s:", _section.c_str(), __FUNCTION__,  deliveryName.c_str());
-	Logger::getLogger()->setMinLevel("warning");
-
-		// FIXME_I:
-	for (auto it=m_deliveryExtra.begin(); it!=m_deliveryExtra.end(); ++it)
-	{
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s S5 - LIST deliveryName :%s: ", _section.c_str(), __FUNCTION__,  it->first.c_str());
-		Logger::getLogger()->setMinLevel("warning");
-
-	}
 
 	auto item = m_deliveryExtra.find(deliveryName);
 	if (item != m_deliveryExtra.end())
 	{
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s S5 - DELETE deliveryName :%s: ", _section.c_str(), __FUNCTION__,  item->first.c_str());
-		Logger::getLogger()->setMinLevel("warning");
-
+		Logger::getLogger()->debug("%s - deliveryName :%s: ", __FUNCTION__,  item->first.c_str());
 		m_deliveryExtra.erase(item);
 	}
 
-	// FIXME_I:
-	for (auto it=m_deliveryExtra.begin(); it!=m_deliveryExtra.end(); ++it)
-	{
-		Logger::getLogger()->setMinLevel("debug");
-		Logger::getLogger()->debug("%s / %s S5 - LIST deliveryName :%s: ", _section.c_str(), __FUNCTION__,  it->first.c_str());
-		Logger::getLogger()->setMinLevel("warning");
-
-	}
 
 }
 
@@ -1101,7 +1079,6 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
  * @param    extraDelivery		True = it is an extra delivery channel
  * @param    prefixOnly		    For extra delivery only, True = without the delivery name
  */
- // FIXME_I:
 string NotificationManager::getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly) {
 
 	string deliveryCategoryName;
@@ -1198,16 +1175,11 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 	return deliveryPlugin;
 }
 
-// FIXME_I:
+/**
+ * Delete an extra delivery
+ */
 DeliveryPlugin* NotificationManager::deleteDeliveryCategory(const string& instanceName, const string& deliveryName, bool extraDelivery)
 {
-
-		// FIXME_I:
-	string _section="xxx9 ";
-	Logger::getLogger()->setMinLevel("debug");
-	Logger::getLogger()->debug("%s / %s S3 - name :%s: delivery :%s:", _section.c_str(), __FUNCTION__, instanceName.c_str(), deliveryName.c_str());
-	Logger::getLogger()->setMinLevel("warning");
-
 	// Protect changes to m_instances
 	lock_guard<mutex> guard(m_instancesMutex);
 	auto instance = m_instances.find(instanceName);
@@ -1219,8 +1191,7 @@ DeliveryPlugin* NotificationManager::deleteDeliveryCategory(const string& instan
 	}
 	else
 	{
-		 Logger::getLogger()->error("Cannot setup new delivery for key %s",
-						instanceName.c_str());
+		 Logger::getLogger()->error("Cannot setup new delivery for key %s",  instanceName.c_str());
 	}
 
 
@@ -1478,7 +1449,6 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 
 	string const notificationName = config.getName();
 
-	// FIXME_I:
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, true);
 
 	if (deliver)
@@ -1512,22 +1482,10 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 								customText);
 		}
 
-		// FIXME_I: remove
-		// Add plugin category name under service/process config name
-//		vector<string> children;
-//		children.push_back(deliveryCategoryName);
-//		m_managerClient->addChildCategories(notificationName,
-//						    children);
-
 		addDeliveryExtra(notificationName, type, theDelivery);
-
-		// FIXME_I:
-		//m_service->registerCategoryChild(notificationName);
-
 	}
 	else
 	{
-		// FIXME_I: tbd
 		delete deliver;
 		success = false;
 	}

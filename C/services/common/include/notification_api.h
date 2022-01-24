@@ -77,7 +77,6 @@ class NotificationApi
 		bool		createNotificationRule(const string& name,
 						       const string& rule);
 		bool		createNotificationDelivery(const string& name,const string& rule);
-		// FIXME_I:
 		bool		deleteNotificationDelivery(const string& name,const string& rule);
 		const std::string&
 				getCallBackURL() const { return m_callBackURL; };
