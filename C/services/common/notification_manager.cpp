@@ -250,8 +250,35 @@ string NotificationInstance::toJSON(bool showAll)
 	ret << "\"rule\": \"";
 	ret << (this->getRulePlugin() ? this->getRulePlugin()->getName() : "");
 	ret << "\", \"delivery\": \"";
-	ret << (this->getDeliveryPlugin() ? this->getDeliveryPlugin()->getName() : "");
-	ret << "\" }";
+	ret << (this->getDeliveryPlugin() ? this->getDeliveryPlugin()->getName() : "") << "\"";
+
+	// Fetch extra channels
+	std::map<std::string, NotificationDelivery *> deliveryExtra = this->getDeliveryExtra();
+	int s = deliveryExtra.size();
+	if (s > 0)
+	{
+		// Add any extra delivery channel
+		ret << ", \"extra_delivery_channels\": [";
+		int i = 0;
+		for(auto &delivery : deliveryExtra)
+		{
+			DeliveryPlugin* plugin = delivery.second->getPlugin();
+			if (plugin)
+			{
+				ret << "{\"name\": \"" << delivery.first <<
+					"\", \"plugin\" : \"" << plugin->getName() << "\"}";
+				if (i < (s -1))
+
+				{
+					ret << ", ";
+				}
+				i++;
+			}
+		}
+		ret << "]";
+	}
+
+	ret << "\"}";
 
 	return ret.str();
 }
