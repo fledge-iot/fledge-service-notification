@@ -19,7 +19,6 @@
 
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"
-#define NOTIFICATION_CATEGORY	"NOTIFICATION"
 #define DEFAULT_DELIVERY_WORKER_THREADS 2
 /**
  * The NotificationService class.
