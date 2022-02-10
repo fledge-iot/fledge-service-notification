@@ -37,7 +37,6 @@ using namespace std;
  */
 NotificationService::NotificationService(const string& myName,
 					 const string& token) :
-					 m_name(myName),
 					 m_shutdown(false),
 					 m_token(token)
 {
