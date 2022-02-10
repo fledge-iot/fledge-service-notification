@@ -187,7 +187,7 @@ bool NotificationService::start(string& coreAddress,
 	this->registerCategory(m_name);
 
 	// Get 'm_name' category name to Fledge Core
-	ConfigCategory category = m_managerClient->getCategory(m_name);
+	ConfigCategory category = m_mgtClient->getCategory(m_name);
 	if (category.itemExists("logLevel"))
 	{
 		m_logger->setMinLevel(category.getValue("logLevel"));
