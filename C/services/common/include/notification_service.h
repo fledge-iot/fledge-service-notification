@@ -44,6 +44,8 @@ class NotificationService : public ServiceAuthHandler
 						m_storage->readingAppend(reading);
 					};
 		StorageClient*		getStorageClient() { return m_storage; };
+		bool			sendToDispatcher(const string& path,
+							const string& payload);
 
 	private:
 		Logger*			m_logger;
