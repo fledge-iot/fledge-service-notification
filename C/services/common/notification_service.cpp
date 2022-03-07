@@ -48,7 +48,7 @@ NotificationService::NotificationService(const string& myName,
 	m_logger = new Logger(myName);
 	//m_logger->setMinLevel("warning");
 
-	m_logger->warn("Starting %s notification server", myName.c_str());
+	m_logger->info("Starting %s notification server", myName.c_str());
 
 	// One thread
 	unsigned int threads = 1;
@@ -85,8 +85,6 @@ bool NotificationService::start(string& coreAddress,
 {
 	// Dynamic port
 	unsigned short managementPort = (unsigned short)0;
-
-	m_logger->info("Starting Notification service '" + m_name +  "' ...");
 
 	// Instantiate ManagementApi class
 	m_managementApi = new ManagementApi(SERVICE_NAME, managementPort);
@@ -167,7 +165,7 @@ bool NotificationService::start(string& coreAddress,
 	unsigned short listenerPort = m_api->getListenerPort();
 	unsigned short managementListener = m_managementApi->getListenerPort();
 	ServiceRecord record(m_name,
-			     "Notification",		// Service type
+			     SERVICE_TYPE,		// Service type
 			     "http",			// Protocol
 			     "localhost",		// Listening address
 			     listenerPort,		// Service port
@@ -183,14 +181,11 @@ bool NotificationService::start(string& coreAddress,
 		return false;
 	}
 
-	// Register NOTIFICATION_CATEGORY to Fledge Core
-	unsigned int retryCount = 0;
-	while (m_managerClient->registerCategory(NOTIFICATION_CATEGORY) == false &&
-		++retryCount < 10)
-	{
-		sleep(2 * retryCount);
-	}
-	registerCategory(m_name);
+	// Register 'm_name' category name to Fledge Core
+	// for configuration changes update
+	this->registerCategory(m_name);
+
+	// Get 'm_name' category name to Fledge Core
 	ConfigCategory category = m_managerClient->getCategory(m_name);
 	if (category.itemExists("logLevel"))
 	{
@@ -205,6 +200,8 @@ bool NotificationService::start(string& coreAddress,
 	{
 		m_delivery_threads = DEFAULT_DELIVERY_WORKER_THREADS;
 	}
+
+	m_logger->info("Starting Notification service '" + m_name +  "' ...");
 
 	// Get Storage service
 	ServiceRecord storageInfo("Fledge Storage");

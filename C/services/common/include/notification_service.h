@@ -22,7 +22,6 @@
 
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"
-#define NOTIFICATION_CATEGORY	"NOTIFICATION"
 #define DEFAULT_DELIVERY_WORKER_THREADS 2
 /**
  * The NotificationService class.
@@ -37,6 +36,7 @@ class NotificationService : public ServiceHandler
 					      unsigned short corePort);
 		void 			stop();
 		void			shutdown();
+		bool			isRunning() { return !m_shutdown; };
 		void			cleanupResources();
 		void			configChange(const std::string&,const std::string&);
 		void			configChildCreate(const std::string& parent_category,const std::string&, const std::string&);
