@@ -278,7 +278,7 @@ string NotificationInstance::toJSON(bool showAll)
 		ret << "]";
 	}
 
-	ret << "\"}";
+	ret << "}";
 
 	return ret.str();
 }
