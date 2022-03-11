@@ -1529,18 +1529,9 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
  * @return			True on success, false otherwise.
  */
 bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCategory& config) {
-
-	bool success;
-	string categoryName;
-	string prefix;
-
-	success = true;
-
+	bool success = true;
 	string notificationName = config.getName();
-
-
-	prefix = getDeliveryCategoryName(notificationName, "", true, true);
-
+	string prefix = getDeliveryCategoryName(notificationName, "", true, true);
 	ConfigCategories categories = m_managerClient->getChildCategories(notificationName);
 
 	for (unsigned int idx = 0; idx < categories.length(); idx++)
@@ -1552,13 +1543,16 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 			ConfigCategory deliveryConfig = m_managerClient->getCategory(categoryName);
 
-			success = addDelivery(config, categoryName, deliveryConfig);
-
-			Logger::getLogger()->debug("%s - found categoryName :%s:", __FUNCTION__, categoryName.c_str() );
+			success = addDelivery(config, categoryName, deliveryConfig))
+			if (success)
+			{
+				// Register category for configuration updates
+				m_service->registerCategory(categoryName);
+			}
 		}
 	}
 
-	return (success);
+	return success;
 }
 
 
