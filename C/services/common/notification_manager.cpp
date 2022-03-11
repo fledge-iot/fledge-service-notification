@@ -1543,7 +1543,7 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 			ConfigCategory deliveryConfig = m_managerClient->getCategory(categoryName);
 
-			success = addDelivery(config, categoryName, deliveryConfig))
+			success = addDelivery(config, categoryName, deliveryConfig);
 			if (success)
 			{
 				// Register category for configuration updates
