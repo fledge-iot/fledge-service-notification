@@ -1536,7 +1536,7 @@ bool NotificationManager::setupDeliveryExtra(const string& name, const ConfigCat
 
 	for (unsigned int idx = 0; idx < categories.length(); idx++)
 	{
-		categoryName = categories[idx]->getName();
+		string categoryName = categories[idx]->getName();
 
 		if (categoryName.compare(0, prefix.size(), prefix) == 0)
 		{
