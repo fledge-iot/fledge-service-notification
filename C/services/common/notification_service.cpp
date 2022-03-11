@@ -419,13 +419,13 @@ void NotificationService::configChange(const string& categoryName,
 	}
 
 	std::size_t found;
-
 	std::size_t foundRule = categoryName.find("rule");
-
 	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
+	std::size_t foundExtraDelivery = categoryName.find(CATEGORY_DELIVERY_EXTRA);
 
 	if (foundRule == std::string::npos &&
-	    foundDelivery == std::string::npos)
+	    foundDelivery == std::string::npos &&
+	    foundExtraDelivery == std::string::npos)
 	{
 		// It's a notification category
 		notifications->lockInstances();
@@ -504,7 +504,7 @@ void NotificationService::configChange(const string& categoryName,
 			// Get related notification instance
 			notifications->lockInstances();
 
-			string NotificationName = categoryName.substr(strlen(CATEGORY_DELIVERY_PREFIX) );
+			string NotificationName = categoryName.substr(strlen(CATEGORY_DELIVERY_PREFIX));
 
 			instance = notifications->getNotificationInstance(NotificationName);
 			notifications->unlockInstances();
@@ -513,6 +513,35 @@ void NotificationService::configChange(const string& categoryName,
 				// Call plugin reconfigure
 				instance->getDeliveryPlugin()->reconfigure(category);
 				return;
+			}
+		}
+
+		// Check it's an extra delivery channel category
+		if (foundExtraDelivery != std::string::npos)
+		{
+			m_logger->debug("Configuration change for extra delivery channel %s",
+			categoryName.c_str());
+
+			// Get related notification instance
+			notifications->lockInstances();
+
+			// Get notification name as first part of category name
+			string NotificationName = categoryName.substr(0, foundExtraDelivery);
+
+			instance = notifications->getNotificationInstance(NotificationName);
+			notifications->unlockInstances();
+
+			if (instance)
+			{
+				// Fetch all extra delivery channels for this nitification
+				map<string, NotificationDelivery *> extra = instance->getDeliveryExtra();
+				auto item = extra.find(categoryName);
+				if (item != extra.end() && item->second->getPlugin())
+				{
+					// Call plugin reconfigure for the found extra delivery channel
+					item->second->getPlugin()->reconfigure(category);
+					return;
+				}
 			}
 		}
 	}
