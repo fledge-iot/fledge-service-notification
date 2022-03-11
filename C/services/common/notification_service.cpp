@@ -359,36 +359,39 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
  */
 void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
 {
-
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 	string notificationName;
 
 	notificationName = parent_category;
 
-		// It's a notification category
-		notifications->lockInstances();
-		instance = notifications->getNotificationInstance(notificationName);
-		notifications->unlockInstances();
+	// It's a notification category
+	notifications->lockInstances();
+	instance = notifications->getNotificationInstance(notificationName);
+	notifications->unlockInstances();
 
-
-		if (instance)
+	if (instance)
+	{
+		bool ret = false;
+		string deliveryName;
+		std::size_t found = categoryName.find(CATEGORY_DELIVERY_EXTRA);
+		if (found != std::string::npos)
 		{
-			bool ret = false;
-
+			deliveryName = categoryName.substr(found + strlen(CATEGORY_DELIVERY_EXTRA));
 			NotificationManager* manager = NotificationManager::getInstance();
-			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName, categoryName);
+
+			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName,
+											deliveryName);
 
 			ret = deliveryPlugin != NULL;
 			// Delete plugin object
 			delete deliveryPlugin;
 		}
-
+	}	
 	if (instance == NULL)
 	{
 		// Log message
 	}
-
 }
 
 /**
