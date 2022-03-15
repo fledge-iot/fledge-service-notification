@@ -208,7 +208,8 @@ class NotificationInstance
 		{
 			return (m_delivery ? m_delivery->getPlugin() : NULL);
 		};
-		std::map<std::string, NotificationDelivery *> getDeliveryExtra()
+		std::vector<std::pair<std::string, NotificationDelivery *>>&
+				getDeliveryExtra()
 		{
 			return (m_deliveryExtra);
 		};
@@ -247,7 +248,8 @@ class NotificationInstance
 		NotificationType	m_type;
 		NotificationRule*	m_rule;
 		NotificationDelivery*	        m_delivery;
-		std::map<std::string, NotificationDelivery *>
+		// Extra delivery channels
+		std::vector<std::pair<std::string, NotificationDelivery *>>
 					m_deliveryExtra;
 
 		time_t			m_lastSent;

@@ -199,7 +199,7 @@ void NotificationInstance::addDeliveryExtra(
 					   NotificationDelivery* delivery)
 {
 
-	m_deliveryExtra.insert( std::make_pair(delivery->getName(), delivery));
+	m_deliveryExtra.push_back(std::make_pair(delivery->getName(), delivery));
 }
 
 
@@ -209,15 +209,17 @@ void NotificationInstance::addDeliveryExtra(
  */
 void NotificationInstance::deleteDeliveryExtra(const std::string &deliveryName)
 {
-
-	auto item = m_deliveryExtra.find(deliveryName);
-	if (item != m_deliveryExtra.end())
+	for (auto item = m_deliveryExtra.begin();
+		  item != m_deliveryExtra.end();
+		  ++item)
 	{
-		Logger::getLogger()->debug("%s - deliveryName :%s: ", __FUNCTION__,  item->first.c_str());
-		m_deliveryExtra.erase(item);
+		if (item->first == deliveryName)
+		{
+			Logger::getLogger()->debug("%s - deliveryName :%s: ", __FUNCTION__,  item->first.c_str());
+			m_deliveryExtra.erase(item);
+			break;
+		}
 	}
-
-
 }
 
 
@@ -253,7 +255,7 @@ string NotificationInstance::toJSON(bool showAll)
 	ret << (this->getDeliveryPlugin() ? this->getDeliveryPlugin()->getName() : "") << "\"";
 
 	// Fetch extra channels
-	std::map<std::string, NotificationDelivery *> deliveryExtra = this->getDeliveryExtra();
+	std::vector<std::pair<std::string, NotificationDelivery *>>& deliveryExtra = this->getDeliveryExtra();
 	int s = deliveryExtra.size();
 	if (s > 0)
 	{

@@ -1274,8 +1274,7 @@ static void deliverNotificationsExtra(
 	// Get delivery queue object
 	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
 
-	std::map<std::string, NotificationDelivery *> deliveryExtra = instance->getDeliveryExtra();
-
+	std::vector<std::pair<std::string, NotificationDelivery *>>& deliveryExtra = instance->getDeliveryExtra();
 	for(auto &delivery : deliveryExtra) {
 
 		DeliveryPlugin* plugin = delivery.second->getPlugin();

@@ -534,13 +534,17 @@ void NotificationService::configChange(const string& categoryName,
 			if (instance)
 			{
 				// Fetch all extra delivery channels for this nitification
-				map<string, NotificationDelivery *> extra = instance->getDeliveryExtra();
-				auto item = extra.find(categoryName);
-				if (item != extra.end() && item->second->getPlugin())
+				std::vector<std::pair<std::string, NotificationDelivery *>>& extra = instance->getDeliveryExtra();
+				for (auto item = extra.begin();
+					  item != extra.end();
+					  ++item)
 				{
-					// Call plugin reconfigure for the found extra delivery channel
-					item->second->getPlugin()->reconfigure(category);
-					return;
+					if (item->first == categoryName  && item->second->getPlugin())
+					{
+						// Call plugin reconfigure for the found extra delivery channel
+						item->second->getPlugin()->reconfigure(category);
+						return;
+					}
 				}
 			}
 		}
