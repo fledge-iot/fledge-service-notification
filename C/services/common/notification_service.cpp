@@ -351,6 +351,7 @@ void NotificationService::configChange(const string& categoryName,
 	if (categoryName.compare(m_name+"Security") == 0)
 	{
 		this->updateSecurityCategory(category);
+		return;
 	}
 
 	std::size_t found;
