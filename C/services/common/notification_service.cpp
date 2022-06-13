@@ -345,7 +345,7 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 		{
 			ConfigCategory config(categoryName, category);
 
-			ConfigCategory notificationConfig = m_managerClient->getCategory(notificationName);
+			ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
 
 			notifications->addDelivery(notificationConfig, categoryName, config);
 		}
