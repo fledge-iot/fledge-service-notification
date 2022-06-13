@@ -17,6 +17,9 @@
 #include <reading.h>
 #include <storage_client.h>
 
+#define CATEGORY_DELIVERY_PREFIX "delivery"
+#define CATEGORY_DELIVERY_EXTRA  "_channel_"
+
 #define SERVICE_NAME		"Fledge Notification"
 #define SERVICE_TYPE		"Notification"
 #define DEFAULT_DELIVERY_WORKER_THREADS 2
@@ -36,9 +39,16 @@ class NotificationService : public ServiceAuthHandler
 		void			shutdown();
 		bool			isRunning() { return !m_shutdown; };
 		void			cleanupResources();
-		void			configChange(const std::string&,
-						     const std::string&);
+		void			configChange(const std::string&,const std::string&);
+		void			configChildCreate(const std::string& parent_category,
+							const std::string&,
+							const std::string&);
+		void			configChildDelete(const std::string& parent_category,
+							const std::string&);
+
 		void			registerCategory(const std::string& categoryName);
+		void   			registerCategoryChild(const std::string& categoryName);
+
 		void			ingestReading(Reading& reading)
 					{
 						m_storage->readingAppend(reading);
@@ -46,11 +56,6 @@ class NotificationService : public ServiceAuthHandler
 		StorageClient*		getStorageClient() { return m_storage; };
 		bool			sendToDispatcher(const string& path,
 							const string& payload);
-		void			configChildCreate(const std::string& parent_category,
-							const std::string&,
-							const std::string&) {};
-		void			configChildDelete(const std::string& parent_category,
-							const std::string&) {};
 
 	private:
 		Logger*			m_logger;
@@ -60,6 +65,9 @@ class NotificationService : public ServiceAuthHandler
 		StorageClient*		m_storage;
 		std::map<std::string, bool>
 					m_registerCategories;
+		std::map<std::string, bool>
+					m_registerCategoriesChild;
+
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
 };

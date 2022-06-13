@@ -56,8 +56,8 @@ static void addReadyData(const map<string, string>& readyData,
 static void deliverData(NotificationRule* rule,
 			const std::multimap<uint64_t, Reading*>& itemData,
 			const map<string, string>& readyData);
-static void deliverNotification(NotificationRule* rule,
-				const std::string& data);
+static void deliverNotifications(NotificationRule* rule,
+								 const std::string& data);
 
 /**
  * NotificationDataElement construcrtor
@@ -608,6 +608,7 @@ bool NotificationQueue::processDataBuffer(map<string, AssetData>& results,
 void NotificationQueue::evalRule(map<string, AssetData>& results,
 				 NotificationRule* rule)
 {
+
 	// Output data string for MIN/MAX/AVG/ALL DATA
 	map<string, string> JSONOutput;
 	// Points in time data for all SingleItem assets data
@@ -655,7 +656,7 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		evalJSON += " }";
 
 		// Call plugin_eval, plugin_reason and plugin_deliver
-		deliverNotification(rule, evalJSON);
+		deliverNotifications(rule, evalJSON);
 	}
 	else
 	{
@@ -1183,6 +1184,108 @@ static void addDataToReason(string& reason, const string& data)
 }
 
 /**
+ * Send the notification of a specific extra delivery
+ *
+ */
+static void sendNotification(
+	NotificationDelivery*	delivery,
+	DeliveryPlugin* plugin,
+	NotificationRule* rule,
+	string reason
+)
+{
+
+	// Get instances
+	NotificationManager* instances = NotificationManager::getInstance();
+
+	// Find instance for this rule
+	NotificationInstance* instance =
+		instances->getNotificationInstance(rule->getNotificationName());
+
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
+	if (plugin &&
+		!plugin->isEnabled())
+	{
+		Logger::getLogger()->warn(
+			"Notification %s has triggered but delivery plugin '%s' is not enabled",
+			  rule->getNotificationName().c_str(), plugin->getName().c_str());
+		return;
+	}
+
+	if (!plugin ||
+		!instance ||
+		!instance->isEnabled() ||
+		!delivery)
+	{
+		Logger::getLogger()->error("Aborting delivery for notification '%s'",
+					   rule->getNotificationName().c_str());
+	}
+	else
+	{
+		Logger::getLogger()->info("Notification %s will be delivered with reason %s",
+				rule->getNotificationName().c_str(), reason.c_str());
+		string customText = delivery->getText();
+
+		// Create data object for delivery queue
+		DeliveryDataElement* deliveryData =
+			new DeliveryDataElement(
+						plugin,
+						delivery->getName(),
+						delivery->getNotificationName(),
+						reason,
+						(customText.empty() ?
+						"ALERT for " + rule->getName() :
+						customText),
+						instance);
+
+		// Add data object to the queue
+		DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
+		dQueue->addElement(queueElement);
+
+		// Audit log
+		instances->auditNotification(instance->getName(), reason);
+		// Update sent notification statistics
+		instances->updateSentStats();
+	}
+
+}
+
+/**
+ * Send the notification to all the extra delivery defined
+ *
+ * @param rule		The data document
+ * @param reason	The reason JSON document
+ */
+static void deliverNotificationsExtra(
+	NotificationRule* rule,
+	string reason
+)
+{
+
+	// Get instances
+	NotificationManager* instances = NotificationManager::getInstance();
+
+	// Find instance for this rule
+	NotificationInstance* instance =
+		instances->getNotificationInstance(rule->getNotificationName());
+
+	// Get delivery queue object
+	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
+
+	std::vector<std::pair<std::string, NotificationDelivery *>>& deliveryExtra = instance->getDeliveryExtra();
+	for(auto &delivery : deliveryExtra) {
+
+		DeliveryPlugin* plugin = delivery.second->getPlugin();
+
+		sendNotification(delivery.second, plugin, rule, reason);
+	}
+
+}
+
+
+/**
  * Deliver notification data
  *
  * 1) call rule "plugin_eval"
@@ -1195,8 +1298,8 @@ static void addDataToReason(string& reason, const string& data)
  * @param    data	JSON data to evaluate
  *
  */
-static void deliverNotification(NotificationRule* rule,
-				const string& data)
+static void deliverNotifications(NotificationRule* rule,
+								 const string& data)
 {
 	// Eval notification data via rule "plugin_eval"
 	bool evalRule = rule->getPlugin()->eval(data);
@@ -1221,51 +1324,16 @@ static void deliverNotification(NotificationRule* rule,
 		// Add the data that trigger the event to the reason document
 		addDataToReason(reason, data);
 
-		// Call delivery "plugin_deliver"
-		DeliveryPlugin* plugin = instance->getDeliveryPlugin();
+		{ // Send to the first delivery
 
-		if (plugin &&
-		    !plugin->isEnabled())
-		{
-			Logger::getLogger()->warn(
-				"Notification %s has triggered but delivery plugin '%s' is not enabled",
-				  rule->getNotificationName().c_str(), plugin->getName().c_str());
-			return;
+			// Call delivery "plugin_deliver"
+			DeliveryPlugin* plugin = instance->getDeliveryPlugin();
+			NotificationDelivery*	delivery = instance->getDelivery();
+
+			sendNotification(delivery, plugin, rule, reason);
 		}
 
-		if (!plugin ||
-		    !instance ||
-		    !instance->isEnabled() ||
-		    !instance->getDelivery())
-		{
-			Logger::getLogger()->error("Aborting delivery for notification '%s'",
-						   rule->getNotificationName().c_str());
-		}
-		else
-		{
-			Logger::getLogger()->info("Notification %s will be delivered with reason %s",
-					rule->getNotificationName().c_str(), reason.c_str());
-			string customText = instance->getDelivery()->getText();
-
-			// Create data object for delivery queue
-			DeliveryDataElement* deliveryData =
-				new DeliveryDataElement(instance->getDelivery()->getName(),
-							instance->getDelivery()->getNotificationName(),
-							reason,
-							(customText.empty() ?
-							"ALERT for " + rule->getName() :
-							customText),
-							instance);
-
-			// Add data object to the queue
-			DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
-			dQueue->addElement(queueElement);
-							 
-			// Audit log
-			instances->auditNotification(instance->getName(), reason);
-			// Update sent notification statistics
-			instances->updateSentStats();
-		}
+		deliverNotificationsExtra(rule, reason);
 	}
 	else
 	{
@@ -1570,7 +1638,7 @@ static void deliverData(NotificationRule* rule,
 		// If all assets are available call plugin_eval, plugin_reason and plugin_deliver
 		if (assets.size() == values.size())
 		{
-			deliverNotification(rule, output);
+			deliverNotifications(rule, output);
 		}
 	}
 }

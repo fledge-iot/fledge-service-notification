@@ -47,7 +47,7 @@ NotificationService::NotificationService(const string& myName,
 
 	// Create new logger instance
 	m_logger = new Logger(myName);
-	m_logger->setMinLevel("warning");
+	//m_logger->setMinLevel("warning");
 
 	m_logger->info("Starting %s notification server", myName.c_str());
 
@@ -325,6 +325,80 @@ void NotificationService::cleanupResources()
 }
 
 /**
+ * Create an extra delivery
+ */
+void NotificationService::configChildCreate(const std::string& parent_category, const string& categoryName, const string& category)
+{
+
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = parent_category;
+
+		// It's a notification category
+		notifications->lockInstances();
+		instance = notifications->getNotificationInstance(notificationName);
+		notifications->unlockInstances();
+
+		if (instance)
+		{
+			ConfigCategory config(categoryName, category);
+
+			ConfigCategory notificationConfig = m_managerClient->getCategory(notificationName);
+
+			notifications->addDelivery(notificationConfig, categoryName, config);
+		}
+
+	if (instance == NULL)
+	{
+		// Log message
+	}
+
+}
+
+
+/**
+ * Delete an extra delivery
+ */
+void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
+{
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = parent_category;
+
+	// It's a notification category
+	notifications->lockInstances();
+	instance = notifications->getNotificationInstance(notificationName);
+	notifications->unlockInstances();
+
+	if (instance)
+	{
+		bool ret = false;
+		string deliveryName;
+		std::size_t found = categoryName.find(CATEGORY_DELIVERY_EXTRA);
+		if (found != std::string::npos)
+		{
+			deliveryName = categoryName.substr(found + strlen(CATEGORY_DELIVERY_EXTRA));
+			NotificationManager* manager = NotificationManager::getInstance();
+
+			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName,
+											deliveryName);
+
+			ret = deliveryPlugin != NULL;
+			// Delete plugin object
+			delete deliveryPlugin;
+		}
+	}	
+	if (instance == NULL)
+	{
+		// Log message
+	}
+}
+
+/**
  * Configuration change notification
  *
  * @param    categoryName	The category name which configuration has been changed
@@ -333,6 +407,7 @@ void NotificationService::cleanupResources()
 void NotificationService::configChange(const string& categoryName,
 				       const string& category)
 {
+
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 
@@ -355,11 +430,13 @@ void NotificationService::configChange(const string& categoryName,
 	}
 
 	std::size_t found;
-
 	std::size_t foundRule = categoryName.find("rule");
-	std::size_t foundDelivery = categoryName.find("delivery");
+	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
+	std::size_t foundExtraDelivery = categoryName.find(CATEGORY_DELIVERY_EXTRA);
+
 	if (foundRule == std::string::npos &&
-	    foundDelivery == std::string::npos)
+	    foundDelivery == std::string::npos &&
+	    foundExtraDelivery == std::string::npos)
 	{
 		// It's a notification category
 		notifications->lockInstances();
@@ -389,7 +466,7 @@ void NotificationService::configChange(const string& categoryName,
 			{
 				return;
 			}
-			
+
 			// Call plugin reconfigure
 			instance->getRulePlugin()->reconfigure(category);
 
@@ -437,7 +514,10 @@ void NotificationService::configChange(const string& categoryName,
 		{
 			// Get related notification instance
 			notifications->lockInstances();
-			instance = notifications->getNotificationInstance(categoryName.substr(8));
+
+			string NotificationName = categoryName.substr(strlen(CATEGORY_DELIVERY_PREFIX));
+
+			instance = notifications->getNotificationInstance(NotificationName);
 			notifications->unlockInstances();
 			if (instance && instance->getDeliveryPlugin())
 			{
@@ -446,13 +526,48 @@ void NotificationService::configChange(const string& categoryName,
 				return;
 			}
 		}
+
+		// Check it's an extra delivery channel category
+		if (foundExtraDelivery != std::string::npos)
+		{
+			m_logger->debug("Configuration change for extra delivery channel %s",
+			categoryName.c_str());
+
+			// Get related notification instance
+			notifications->lockInstances();
+
+			// Get notification name as first part of category name
+			string NotificationName = categoryName.substr(0, foundExtraDelivery);
+
+			instance = notifications->getNotificationInstance(NotificationName);
+			notifications->unlockInstances();
+
+			if (instance)
+			{
+				// Fetch all extra delivery channels for this nitification
+				std::vector<std::pair<std::string, NotificationDelivery *>>& extra = instance->getDeliveryExtra();
+				for (auto item = extra.begin();
+					  item != extra.end();
+					  ++item)
+				{
+					if (item->first == categoryName  && item->second->getPlugin())
+					{
+						// Call plugin reconfigure for the found extra delivery channel
+						item->second->getPlugin()->reconfigure(category);
+						return;
+					}
+				}
+			}
+		}
 	}
 
 	if (instance == NULL)
 	{
 		// Log message
 	}
+
 }
+
 
 /**
  * Register a configuration category for updates
@@ -467,7 +582,26 @@ void NotificationService::registerCategory(const string& categoryName)
 	    m_registerCategories.find(categoryName) == m_registerCategories.end())
 	{
 		configHandler->registerCategory(this, categoryName);
+
 		m_registerCategories[categoryName] = true;
+	}
+}
+
+/**
+ * Register the notification for all the child categories of the requested parent one
+ *
+ * @param    categoryName	Parent category for which registation is requested
+ */
+void NotificationService::registerCategoryChild(const string& categoryName)
+{
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
+	// Call registerCategory only once
+	if (configHandler &&
+	    m_registerCategoriesChild.find(categoryName) == m_registerCategoriesChild.end())
+	{
+		configHandler->registerCategoryChild(this, categoryName);
+
+		m_registerCategoriesChild[categoryName] = true;
 	}
 }
 
