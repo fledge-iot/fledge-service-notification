@@ -16,7 +16,7 @@
 #include <logger.h>
 #include <iostream>
 #include <string>
-
+#include <service_handler.h>
 #include <storage_client.h>
 #include <config_handler.h>
 #include <notification_service.h>
@@ -36,11 +36,12 @@ using namespace std;
  * @param    token	The satrtup token passed at startup time by core server
  */
 NotificationService::NotificationService(const string& myName,
-					const string& token) :
-					 m_name(myName),
+					 const string& token) :
 					 m_shutdown(false),
 					 m_token(token)
 {
+	m_name = myName;
+
 	// Default to a dynamic port
 	unsigned short servicePort = 0;
 
@@ -57,7 +58,7 @@ NotificationService::NotificationService(const string& myName,
 	m_api = new NotificationApi(servicePort, threads);
 
 	// Set NULL for other resources
-	m_managerClient = NULL;
+	m_mgtClient = NULL;
 	m_managementApi = NULL;
 }
 
@@ -67,7 +68,7 @@ NotificationService::NotificationService(const string& myName,
 NotificationService::~NotificationService()
 {
 	delete m_api;
-	delete m_managerClient;
+	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
 }
@@ -113,8 +114,8 @@ bool NotificationService::start(string& coreAddress,
 	m_api->setCallBackURL();
 
 	// Get management client
-	m_managerClient = new ManagementClient(coreAddress, corePort);
-	if (!m_managerClient)
+	m_mgtClient = new ManagementClient(coreAddress, corePort);
+	if (!m_mgtClient)
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge at " + \
@@ -127,7 +128,7 @@ bool NotificationService::start(string& coreAddress,
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
 	notificationConfig.setDescription("Notification services");
-	if (!m_managerClient->addCategory(notificationConfig, true))
+	if (!m_mgtClient->addCategory(notificationConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -151,7 +152,7 @@ bool NotificationService::start(string& coreAddress,
 	notificationServerConfig.setItemDisplayName("deliveryThreads",
 						    "Maximum number of delivery threads");
 	
-	if (!m_managerClient->addCategory(notificationServerConfig, true))
+	if (!m_mgtClient->addCategory(notificationServerConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -172,7 +173,7 @@ bool NotificationService::start(string& coreAddress,
 			     managementListener,	// Management port
 			     m_token);			// Startup token
 
-	if (!m_managerClient->registerService(record))
+	if (!m_mgtClient->registerService(record))
 	{
 		m_logger->fatal("Unable to register service "
 				"\"Notification\" for service '" + m_name + "'");
@@ -186,7 +187,7 @@ bool NotificationService::start(string& coreAddress,
 	this->registerCategory(m_name);
 
 	// Get 'm_name' category name to Fledge Core
-	ConfigCategory category = m_managerClient->getCategory(m_name);
+	ConfigCategory category = m_mgtClient->getCategory(m_name);
 	if (category.itemExists("logLevel"))
 	{
 		m_logger->setMinLevel(category.getValue("logLevel"));
@@ -205,7 +206,7 @@ bool NotificationService::start(string& coreAddress,
 
 	// Get Storage service
 	ServiceRecord storageInfo("Fledge Storage");
-	if (!m_managerClient->getService(storageInfo))
+	if (!m_mgtClient->getService(storageInfo))
 	{
 		m_logger->fatal("Unable to find Fledge storage "
 				"connection info for service '" + m_name + "'");
@@ -213,7 +214,7 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 
 		// Unregister from Fledge
-		m_managerClient->unregisterService();
+		m_mgtClient->unregisterService();
 
 		return false;
 	}
@@ -227,14 +228,17 @@ bool NotificationService::start(string& coreAddress,
 	m_storage = &storageClient;
 
 	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_managerClient, this);
+	NotificationManager instances(m_name, m_mgtClient, this);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
 	instances.loadInstances();
 
-	m_managerClient->addAuditEntry("NTFST",
+	m_mgtClient->addAuditEntry("NTFST",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
+
+	// Create default security category
+	this->createSecurityCategories(m_mgtClient);
 
 	// We have notitication instances loaded
 	// (1.1) Start the NotificationQueue
@@ -261,7 +265,7 @@ bool NotificationService::start(string& coreAddress,
 	// - all subscriptions already unregistered
 
 	// Unregister from storage service
-	m_managerClient->unregisterService();
+	m_mgtClient->unregisterService();
 
 	// Stop management API
 	m_managementApi->stop();
@@ -272,7 +276,7 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_managerClient->addAuditEntry("NTFSD",
+	m_mgtClient->addAuditEntry("NTFSD",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
 
@@ -415,6 +419,13 @@ void NotificationService::configChange(const string& categoryName,
 			m_logger->setMinLevel(config.getValue("logLevel"));
 			m_logger->warn("Set log level to %s", config.getValue("logLevel").c_str());
 		}
+		return;
+	}
+
+	// Update the  Security category
+	if (categoryName.compare(m_name+"Security") == 0)
+	{
+		this->updateSecurityCategory(category);
 		return;
 	}
 
@@ -565,8 +576,7 @@ void NotificationService::configChange(const string& categoryName,
  */
 void NotificationService::registerCategory(const string& categoryName)
 {
-
-	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
 	// Call registerCategory only once
 	if (configHandler &&
 	    m_registerCategories.find(categoryName) == m_registerCategories.end())
@@ -584,7 +594,7 @@ void NotificationService::registerCategory(const string& categoryName)
  */
 void NotificationService::registerCategoryChild(const string& categoryName)
 {
-	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
 	// Call registerCategory only once
 	if (configHandler &&
 	    m_registerCategoriesChild.find(categoryName) == m_registerCategoriesChild.end())
@@ -592,5 +602,67 @@ void NotificationService::registerCategoryChild(const string& categoryName)
 		configHandler->registerCategoryChild(this, categoryName);
 
 		m_registerCategoriesChild[categoryName] = true;
+	}
+}
+
+/**
+ * Send to the control dispatcher service
+ *
+ * @param path		The path component of the URL to send
+ * @param payload	The JSON paylaod
+ * @return bool		Return true if the paylaod was sent
+ */
+bool NotificationService::sendToDispatcher(const string& path, const string& payload)
+{
+	// Send the control message to the south service
+	try {
+		if (!m_mgtClient)
+		{
+			Logger::getLogger()->error("Missing connection to management client, "
+					"unable to deliver control message");
+			return false;
+		}
+
+		ServiceRecord service("dispatcher");
+		if (!m_mgtClient->getService(service))
+		{
+			Logger::getLogger()->error("Unable to find dispatcher service 'Dispatcher'");
+			return false;
+		}
+		string address = service.getAddress();
+		unsigned short port = service.getPort();
+		char addressAndPort[80];
+		snprintf(addressAndPort, sizeof(addressAndPort), "%s:%d", address.c_str(), port);
+		SimpleWeb::Client<SimpleWeb::HTTP> http(addressAndPort);
+
+		try {
+			SimpleWeb::CaseInsensitiveMultimap headers = {{"Content-Type", "application/json"}};
+			// Pass Notification service bearer token to dispatcher
+			string regToken = m_mgtClient->getRegistrationBearerToken();
+			if (regToken != "")
+			{
+				headers.emplace("Authorization", "Bearer " + regToken);
+			}
+
+			auto res = http.request("POST", path, payload, headers);
+			if (res->status_code.compare("202 Accepted"))
+			{
+				Logger::getLogger()->error("Failed to send control request to dispatcher service, %s",
+						res->status_code.c_str());
+				Logger::getLogger()->error("Failed Path %s, %s", path.c_str(), payload.c_str());
+				return false;
+			}
+		} catch (exception& e) {
+			Logger::getLogger()->error("Failed to send control operation to dispatcher service, %s",
+						e.what());
+			Logger::getLogger()->error("Failed Path %s, %s", path.c_str(), payload.c_str());
+			return false;
+		}
+
+		return true;
+	}
+	catch (exception &e) {
+		Logger::getLogger()->error("Failed to send control operation to dispatcher service, %s", e.what());
+		return false;
 	}
 }
