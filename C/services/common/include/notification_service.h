@@ -39,8 +39,11 @@ class NotificationService : public ServiceHandler
 		bool			isRunning() { return !m_shutdown; };
 		void			cleanupResources();
 		void			configChange(const std::string&,const std::string&);
-		void			configChildCreate(const std::string& parent_category,const std::string&, const std::string&);
-		void			configChildDelete(const std::string& parent_category,const std::string&);
+		void			configChildCreate(const std::string& parent_category,
+							const std::string&,
+							const std::string&);
+		void			configChildDelete(const std::string& parent_category,
+							const std::string&);
 
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);
@@ -51,11 +54,6 @@ class NotificationService : public ServiceHandler
 					};
 		ManagementClient*	getManagementClient() { return m_managerClient; };
 		StorageClient*		getStorageClient() { return m_storage; };
-		void			configChildCreate(const std::string& parent_category,
-							const std::string&,
-							const std::string&) {};
-		void			configChildDelete(const std::string& parent_category,
-							const std::string&) {};
 
 	private:
 		const std::string	m_name;
