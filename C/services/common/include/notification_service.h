@@ -51,6 +51,11 @@ class NotificationService : public ServiceHandler
 					};
 		ManagementClient*	getManagementClient() { return m_managerClient; };
 		StorageClient*		getStorageClient() { return m_storage; };
+		void			configChildCreate(const std::string& parent_category,
+							const std::string&,
+							const std::string&) {};
+		void			configChildDelete(const std::string& parent_category,
+							const std::string&) {};
 
 	private:
 		const std::string	m_name;
