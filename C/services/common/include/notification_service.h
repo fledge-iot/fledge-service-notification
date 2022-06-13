@@ -46,6 +46,11 @@ class NotificationService : public ServiceAuthHandler
 		StorageClient*		getStorageClient() { return m_storage; };
 		bool			sendToDispatcher(const string& path,
 							const string& payload);
+		void			configChildCreate(const std::string& parent_category,
+							const std::string&,
+							const std::string&) {};
+		void			configChildDelete(const std::string& parent_category,
+							const std::string&) {};
 
 	private:
 		Logger*			m_logger;
