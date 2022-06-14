@@ -53,6 +53,7 @@ for f in $cmakefile; do
 		if [ $rc != 0 ]; then
 			exit $rc
 		fi
+		make CoverageHtml
 	) >/dev/null
 	rc=$?
 	if [ $rc != 0 ]; then
