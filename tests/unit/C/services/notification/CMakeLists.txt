@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.6.0)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../..)
-set(GCOVR_PATH "/home/nerd039/.local/bin/gcovr")
+set(GCOVR_PATH "$ENV{HOME}/.local/bin/gcovr")
 
 # Set the plugin name to build
 project(RunTests)
