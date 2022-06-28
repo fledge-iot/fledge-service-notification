@@ -39,7 +39,8 @@ NotificationService::NotificationService(const string& myName,
 					const string& token) :
 					 m_name(myName),
 					 m_shutdown(false),
-					 m_token(token)
+					 m_token(token),
+					 m_dryRun(false)
 {
 	// Default to a dynamic port
 	unsigned short servicePort = 0;
@@ -226,34 +227,37 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
-	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_managerClient, this);
-	// Get all notification instances under Notifications
-	// and load plugins defined in all notifications 
-	instances.loadInstances();
+	if (!m_dryRun)
+	{
+		// Setup NotificationManager class
+		NotificationManager instances(m_name, m_managerClient, this);
+		// Get all notification instances under Notifications
+		// and load plugins defined in all notifications 
+		instances.loadInstances();
 
-	m_managerClient->addAuditEntry("NTFST",
-					"INFORMATION",
-					"{\"name\": \"" + m_name + "\"}");
+		m_managerClient->addAuditEntry("NTFST",
+						"INFORMATION",
+						"{\"name\": \"" + m_name + "\"}");
 
-	// We have notitication instances loaded
-	// (1.1) Start the NotificationQueue
-	// (1.2) Start the DeliveryQueue
-	NotificationQueue queue(m_name);
-	DeliveryQueue dQueue(m_name, m_delivery_threads);
+		// We have notitication instances loaded
+		// (1.1) Start the NotificationQueue
+		// (1.2) Start the DeliveryQueue
+		NotificationQueue queue(m_name);
+		DeliveryQueue dQueue(m_name, m_delivery_threads);
 
-	// (2) Register notification interest, per assetName:
-	// by call Storage layer Notification API.
-	NotificationSubscription subscriptions(m_name, storageClient);
-	subscriptions.registerSubscriptions();
+		// (2) Register notification interest, per assetName:
+		// by call Storage layer Notification API.
+		NotificationSubscription subscriptions(m_name, storageClient);
+		subscriptions.registerSubscriptions();
 
-	// Notification data will be now received via NotificationApi server
-	// and added into the queue for processing.
+		// Notification data will be now received via NotificationApi server
+		// and added into the queue for processing.
 
-	// .... wait until shutdown ...
+		// .... wait until shutdown ...
 
-	// Wait for all the API threads to complete
-	m_api->wait();
+		// Wait for all the API threads to complete
+		m_api->wait();
+	}
 
 	// Shutdown is starting ...
 	// NOTE:

@@ -44,6 +44,7 @@ class NotificationService : public ServiceHandler
 					};
 		ManagementClient*	getManagementClient() { return m_managerClient; };
 		StorageClient*		getStorageClient() { return m_storage; };
+		void			setDryRun() { m_dryRun = true; };
 
 	private:
 		const std::string	m_name;
@@ -57,5 +58,6 @@ class NotificationService : public ServiceHandler
 					m_registerCategories;
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
+		bool			m_dryRun;
 };
 #endif

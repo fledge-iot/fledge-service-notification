@@ -62,6 +62,7 @@ int main(int argc, char *argv[])
 	string	       myName = SERVICE_NAME;
 	string	       logLevel = "warning";
 	string         token = "";
+	bool	       dryrun = false;
 
 	signal(SIGSEGV, handler);
 	signal(SIGILL, handler);
@@ -95,6 +96,10 @@ int main(int argc, char *argv[])
 		{
 			token = &argv[i][8];
 		}
+		else if (!strncmp(argv[i], "--dryrun=", 8))
+		{
+			dryrun = true;
+		}
 	}
 
 	if (daemonMode && makeDaemon() == -1)
@@ -114,6 +119,7 @@ int main(int argc, char *argv[])
 
 	// Instantiate the NotificationService class
 	service = new NotificationService(myName, token);
+	service->setDryRun();
 
 	// Start the Notification service
 	service->start(coreAddress, corePort);
