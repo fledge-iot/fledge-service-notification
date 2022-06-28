@@ -123,6 +123,18 @@ void notificationCreateNotificationDelivery(shared_ptr<HttpServer::Response> res
 }
 
 /**
+ * Wrapper for DELETE /notification/{NotificationName}/delivery/{DeliveryName}
+ */
+void notificationDeleteNotificationDelivery(shared_ptr<HttpServer::Response> response,
+				    shared_ptr<HttpServer::Request> request)
+{
+	NotificationApi* api = NotificationApi::getInstance();
+	api->getNotificationObject(NotificationApi::ObjDeleteNotificationDelivery,
+				   response,
+				   request);
+}
+
+/**
  * Wrapper for DELETE /notification/{NotificationName}
  */
 void notificationDeleteNotification(shared_ptr<HttpServer::Response> response,
@@ -264,7 +276,9 @@ void NotificationApi::initResources()
 	m_server->resource[POST_NOTIFICATION_NAME]["POST"] = notificationCreateNotification;
 	m_server->resource[POST_NOTIFICATION_RULE_NAME]["POST"] = notificationCreateNotificationRule;
 	m_server->resource[POST_NOTIFICATION_DELIVERY_NAME]["POST"] = notificationCreateNotificationDelivery;
+	m_server->resource[POST_NOTIFICATION_DELIVERY_NAME]["DELETE"] = notificationDeleteNotificationDelivery;
 	m_server->resource[POST_NOTIFICATION_NAME]["DELETE"] = notificationDeleteNotification;
+
 
 	// Handle errors
 	m_server->default_resource["GET"] = defaultWrapper;
@@ -486,6 +500,20 @@ void NotificationApi::getNotificationObject(NOTIFICATION_OBJECT object,
 						  "{\"error\": \"create delivery failure\"}";;
 			}
 			break;
+
+		case ObjDeleteNotificationDelivery:
+			{
+				string name = urlDecode(request->path_match[NOTIFICATION_NAME_COMPONENT]);
+				string delivery = request->path_match[DELIVERY_NAME_COMPONENT];
+
+				bool ret = this->deleteNotificationDelivery(name, delivery);
+				responsePayload = ret ?
+						 "{\"message\": \"created\"}" :
+						  "{\"error\": \"create delivery failure\"}";;
+			}
+			break;
+
+
 		case ObjDeleteNotification:
 			{
 				string name = request->path_match[NOTIFICATION_NAME_COMPONENT];
@@ -573,12 +601,11 @@ bool NotificationApi::createNotificationRule(const string& name,
 }
 
 /**
- * Create a delivery subcategory for the notification
- * with the template content for the given delivery plugin.
+ * Add a delivery for the notification
  *
- * @param    name		The notification category name
- * @param    delivery		The delivery subcategory to create
- * @return			True on success, false otherwise
+ * @param    name     The notification category name
+ * @param    delivery The delivery subcategory to create
+ * @return			  True on success, false otherwise
  */
 bool NotificationApi::createNotificationDelivery(const string& name,
 						 const string& delivery)
@@ -597,6 +624,31 @@ bool NotificationApi::createNotificationDelivery(const string& name,
 
 	return ret;
 }
+
+/**
+ * Delete a delivery for the notification
+ *
+ * @param    name     The notification category name
+ * @param    delivery The delivery subcategory to create
+ * @return			  True on success, false otherwise
+ */
+bool NotificationApi::deleteNotificationDelivery(const string& name,const string& delivery)
+{
+	bool ret = false;
+
+	// Get NotificationManager instance
+	NotificationManager* manager = NotificationManager::getInstance();
+	if (manager)
+	{
+		DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(name, delivery);
+		ret = deliveryPlugin != NULL;
+		// Delete plugin object
+		delete deliveryPlugin;
+	}
+
+	return ret;
+}
+
 
 /**
  * Remove a notification instance

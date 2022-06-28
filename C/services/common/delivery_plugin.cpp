@@ -106,6 +106,7 @@ bool DeliveryPlugin::deliver(const std::string& deliveryName,
 			     const std::string& triggerReason,
 			     const std::string& message)
 {
+
 	bool ret = false;
 	time_t	start = time(0);
 	if (this->pluginDeliverPtr)
@@ -157,6 +158,7 @@ void DeliveryPlugin::setEnabled(const ConfigCategory& config)
 		Logger::getLogger()->debug("DeliveryPlugin::setEnabled = %d",
 					   m_enabled);
 	}
+
 }
 
 /**

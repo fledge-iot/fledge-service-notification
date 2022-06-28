@@ -157,6 +157,7 @@ void NotificationSubscription::registerSubscriptions()
 bool NotificationSubscription::addSubscription(const std::string& assetName,
 					       SubscriptionElement& element)
 {
+
 	// Get NotificationAPI instance
 	NotificationApi* api = NotificationApi::getInstance();
 	// Get callback URL
@@ -164,7 +165,7 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 
 	if (callBackURL.empty())
 	{
-		m_logger->fatal("Error while registering asset '" + \
+		m_logger->fatal(" Error while registering asset '" + \
 				assetName + "' for notification " + \
 				element.getNotificationName() + \
 				" callback URL is not set");
@@ -189,7 +190,8 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 	}
 
 	m_logger->info("Subscription for asset '" + assetName + \
-		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules"); 
+		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules");
+
 	return true;
 }
 

@@ -44,16 +44,19 @@ static void worker(DeliveryQueue* queue, int num)
  *
  * @param    delieveryName	The deliveryName to process
  */
-DeliveryDataElement::DeliveryDataElement(const string& deliveryName,
+DeliveryDataElement::DeliveryDataElement(
+					 DeliveryPlugin* plugin,
+					 const string& deliveryName,
 					 const string& notificationName,
 					 const string& triggerReason,
 					 const string& message,
 					 NotificationInstance* instance) :
-				m_deliveryName(deliveryName),
-                                m_notificationName(notificationName),
-                                m_reason(triggerReason),
-				m_message(message),
-				m_instance(instance)
+					m_plugin(plugin),
+					m_deliveryName(deliveryName),
+					m_notificationName(notificationName),
+					m_reason(triggerReason),
+					m_message(message),
+					m_instance(instance)
 {
 }
 
@@ -86,7 +89,7 @@ DeliveryQueueElement::DeliveryQueueElement(DeliveryDataElement* data)
 	// Save DeliveryPlugin object
 	if (instance)
 	{
-		m_plugin = instance->getDeliveryPlugin();
+		m_plugin = data->getPlugin();
 	}
 	else
 	{
@@ -424,7 +427,7 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 		if (instance->getDeliveryPlugin() != elem->getPlugin())
 		{
 			// Set new plugin
-			elem->setPlugin(instance->getDeliveryPlugin());
+			elem->setPlugin(elem->getPlugin());
 		}
 	}
 
