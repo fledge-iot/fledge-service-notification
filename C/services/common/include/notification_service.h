@@ -54,6 +54,7 @@ class NotificationService : public ServiceAuthHandler
 						m_storage->readingAppend(reading);
 					};
 		StorageClient*		getStorageClient() { return m_storage; };
+		void			setDryRun() { m_dryRun = true; };
 		bool			sendToDispatcher(const string& path,
 							const string& payload);
 
@@ -70,5 +71,6 @@ class NotificationService : public ServiceAuthHandler
 
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
+		bool			m_dryRun;
 };
 #endif

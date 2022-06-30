@@ -38,7 +38,8 @@ using namespace std;
 NotificationService::NotificationService(const string& myName,
 					 const string& token) :
 					 m_shutdown(false),
-					 m_token(token)
+					 m_token(token),
+					 m_dryRun(false)
 {
 	m_name = myName;
 
@@ -227,58 +228,61 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
-	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_mgtClient, this);
-	// Get all notification instances under Notifications
-	// and load plugins defined in all notifications 
-	instances.loadInstances();
+	if (!m_dryRun)
+	{
+		// Setup NotificationManager class
+		NotificationManager instances(m_name, m_mgtClient, this);
+		// Get all notification instances under Notifications
+		// and load plugins defined in all notifications 
+		instances.loadInstances();
 
-	m_mgtClient->addAuditEntry("NTFST",
-					"INFORMATION",
-					"{\"name\": \"" + m_name + "\"}");
+		m_mgtClient->addAuditEntry("NTFST",
+						"INFORMATION",
+						"{\"name\": \"" + m_name + "\"}");
 
-	// Create default security category
-	this->createSecurityCategories(m_mgtClient);
+		// Create default security category
+		this->createSecurityCategories(m_mgtClient);
 
-	// We have notitication instances loaded
-	// (1.1) Start the NotificationQueue
-	// (1.2) Start the DeliveryQueue
-	NotificationQueue queue(m_name);
-	DeliveryQueue dQueue(m_name, m_delivery_threads);
+		// We have notitication instances loaded
+		// (1.1) Start the NotificationQueue
+		// (1.2) Start the DeliveryQueue
+		NotificationQueue queue(m_name);
+		DeliveryQueue dQueue(m_name, m_delivery_threads);
 
-	// (2) Register notification interest, per assetName:
-	// by call Storage layer Notification API.
-	NotificationSubscription subscriptions(m_name, storageClient);
-	subscriptions.registerSubscriptions();
+		// (2) Register notification interest, per assetName:
+		// by call Storage layer Notification API.
+		NotificationSubscription subscriptions(m_name, storageClient);
+		subscriptions.registerSubscriptions();
 
-	// Notification data will be now received via NotificationApi server
-	// and added into the queue for processing.
+		// Notification data will be now received via NotificationApi server
+		// and added into the queue for processing.
 
-	// .... wait until shutdown ...
+		// .... wait until shutdown ...
 
-	// Wait for all the API threads to complete
-	m_api->wait();
+		// Wait for all the API threads to complete
+		m_api->wait();
 
-	// Shutdown is starting ...
-	// NOTE:
-	// - Notification API listener is already down.
-	// - all subscriptions already unregistered
+		// Shutdown is starting ...
+		// NOTE:
+		// - Notification API listener is already down.
+		// - all subscriptions already unregistered
 
-	// Unregister from storage service
-	m_mgtClient->unregisterService();
+		// Unregister from storage service
+		m_mgtClient->unregisterService();
 
-	// Stop management API
-	m_managementApi->stop();
+		// Stop management API
+		m_managementApi->stop();
 
-	// Flush all data in the queues
-	queue.stop();
-	dQueue.stop();
+		// Flush all data in the queues
+		queue.stop();
+		dQueue.stop();
 
-	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
+		m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_mgtClient->addAuditEntry("NTFSD",
-					"INFORMATION",
-					"{\"name\": \"" + m_name + "\"}");
+		m_mgtClient->addAuditEntry("NTFSD",
+						"INFORMATION",
+						"{\"name\": \"" + m_name + "\"}");
+	}
 
 	return true;
 }
