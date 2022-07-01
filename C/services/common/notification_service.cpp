@@ -228,7 +228,7 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
-	if (!m_dryRun)
+	if (! m_dryRun)
 	{
 		// Setup NotificationManager class
 		NotificationManager instances(m_name, m_mgtClient, this);
@@ -282,6 +282,10 @@ bool NotificationService::start(string& coreAddress,
 		m_mgtClient->addAuditEntry("NTFSD",
 						"INFORMATION",
 						"{\"name\": \"" + m_name + "\"}");
+	}
+	else
+	{
+		m_logger->info("Dry run invocation - shutting down");
 	}
 
 	return true;

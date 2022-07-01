@@ -119,7 +119,10 @@ int main(int argc, char *argv[])
 
 	// Instantiate the NotificationService class
 	service = new NotificationService(myName, token);
-	service->setDryRun();
+	if (dryrun)
+	{
+		service->setDryRun();
+	}
 
 	// Start the Notification service
 	service->start(coreAddress, corePort);
