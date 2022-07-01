@@ -285,7 +285,7 @@ bool NotificationService::start(string& coreAddress,
 	}
 	else
 	{
-		m_logger->info("Dry run invokation - shutting down");
+		m_logger->info("Dry run invocation - shutting down");
 	}
 
 	return true;
