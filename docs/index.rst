@@ -21,11 +21,11 @@
 .. Links
 .. |rule_plugins| raw:: html
 
-   <a href="fledge_plugins.html#notification-rule-plugins">Notification Rule Plugins</a>
+   <a href="../../fledge_plugins.html#notification-rule-plugins">Notification Rule Plugins</a>
 
 .. |delivery_plugins| raw:: html
 
-   <a href="fledge_plugins.html#notification-delivery-plugins">Notification Delivery Plugins</a>
+   <a href="../../fledge_plugins.html#notification-delivery-plugins">Notification Delivery Plugins</a>
 
 
 *********************
