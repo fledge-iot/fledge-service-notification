@@ -28,6 +28,12 @@ To run all the unit tests go to the directory scripts and execute the script
 
 This will run all unit tests and place the JUnit XML files in the directory results
 
+To generate coverage reports, go to the directory scripts and execute the script as follows:
+
+- RunAllTests coverage
+
+This will run all unit tests and report test coverage results in '.../build/CoverageHtml/index.html' file w.r.t. path of CMakeLists.txt files.
+
 NOTE:
 the build process for C++ tests checks first the environment FLEDGE_ROOT (pointing where Fledge has been built)
 If the variable is not set then the build process uses FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS, assuming the Fledge dev package has been installed.

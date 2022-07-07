@@ -16,7 +16,7 @@ set(EXEC RunTests)
 # If no -D options are given and FLEDGE_ROOT environment variable is set
 # then Fledge libraries and header files are pulled from FLEDGE_ROOT path.
 
-set(CMAKE_CXX_FLAGS "-std=c++11 -O3 -g")
+set(CMAKE_CXX_FLAGS "-std=c++11 -O0")
 set(CMAKE_BUILD_TYPE "Debug")
 
 include(CodeCoverage)

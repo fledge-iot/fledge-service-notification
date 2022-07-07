@@ -5,6 +5,16 @@
 #
 exitstate=0
 
+jobs="-j4"
+if [ "$1" = "-j*" ]; then
+  jobs="$1"
+fi
+
+COVERAGE=0
+if [ "$1" = "coverage" ]; then
+  COVERAGE=1
+fi
+
 # Set here location of Fledge source code:
 # if FLEDGE_ROOT is not set then use Fledge includes and Fledge libs
 
@@ -41,19 +51,28 @@ for f in $cmakefile; do
 			echo cmake failed for $dir;
 			exit 1
 		fi
-		make;
+		make ${jobs};
 		rc=$?
 		if [ $rc != 0 ]; then
 			echo make failed for $dir;
 			exit 1
 		fi
-		echo Running tests...;
-		./RunTests --gtest_output=xml > /tmp/results;
-		rc=$?
-		if [ $rc != 0 ]; then
-			exit $rc
+		if [ $COVERAGE -eq 0 ]; then
+			echo Running tests...;
+			./RunTests --gtest_output=xml > /tmp/results;
+			rc=$?
+			if [ $rc != 0 ]; then
+				exit $rc
+			fi
 		fi
-		make CoverageHtml
+
+		if [ $COVERAGE -eq 1 ]; then
+			echo Generating coverage reports...;
+			file=$(basename $f)
+			grep -q CoverageHtml ../${file}
+			[ $? -eq 0 ] && (echo Running "make CoverageHtml" && make CoverageHtml) || echo "CoverageHtml target not found, skipping..."
+		fi
+
 	) >/dev/null
 	rc=$?
 	if [ $rc != 0 ]; then
@@ -64,6 +83,6 @@ for f in $cmakefile; do
 		echo All tests in $dir passed
 	fi
 	file=`echo $dir | sed -e 's#./##' -e 's#/#_#g'`
-	mv $dir/build/test_detail.xml results/${file}.xml
+	[ -f $dir/build/test_detail.xml ] && mv $dir/build/test_detail.xml results/${file}.xml
 done
 exit $exitstate
