@@ -101,3 +101,10 @@ setup_target_for_coverage_gcovr_html(
             EXECUTABLE ${PROJECT_NAME}
             DEPENDENCIES ${PROJECT_NAME}
     )
+
+setup_target_for_coverage_gcovr_xml(
+            NAME CoverageXml
+            EXECUTABLE ${PROJECT_NAME}
+            DEPENDENCIES ${PROJECT_NAME}
+    )
+
