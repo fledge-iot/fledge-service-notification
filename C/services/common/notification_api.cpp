@@ -193,8 +193,14 @@ NotificationApi::NotificationApi(const unsigned short port,
  */
 NotificationApi::~NotificationApi()
 {
-	delete m_server;
-	delete m_thread;
+	if (m_server)
+	{
+		delete m_server;
+	}
+	if (m_thread)
+	{
+		delete m_thread;
+	}
 }
 
 /**

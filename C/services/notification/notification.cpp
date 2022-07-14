@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
 		{
 			token = &argv[i][8];
 		}
-		else if (!strncmp(argv[i], "--dryrun=", 8))
+		else if (!strncmp(argv[i], "--dryrun", 8))
 		{
 			dryrun = true;
 		}
