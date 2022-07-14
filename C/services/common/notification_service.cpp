@@ -235,6 +235,7 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
+
 	// Setup NotificationManager class
 	NotificationManager instances(m_name, m_mgtClient, this);
 	// Get all notification instances under Notifications
