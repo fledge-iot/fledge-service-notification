@@ -174,21 +174,21 @@ bool NotificationService::start(string& coreAddress,
 			     managementListener,	// Management port
 			     m_token);			// Startup token
 
-	if (!m_mgtClient->registerService(record))
-	{
-		m_logger->fatal("Unable to register service "
-				"\"Notification\" for service '" + m_name + "'");
-
-		this->cleanupResources();
-		return false;
-	}
-
-	// Register 'm_name' category name to Fledge Core
-	// for configuration changes update
-	this->registerCategory(m_name);
-
 	if (m_dryRun)
 	{
+		if (!m_mgtClient->registerService(record))
+		{
+			m_logger->fatal("Unable to register service "
+					"\"Notification\" for service '" + m_name + "'");
+
+			this->cleanupResources();
+			return false;
+		}
+
+		// Register 'm_name' category name to Fledge Core
+		// for configuration changes update
+		this->registerCategory(m_name);
+
 		m_logger->info("Dry run invocation - shutting down");
 		this->cleanupResources();
 		return true;
