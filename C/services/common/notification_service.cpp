@@ -247,7 +247,7 @@ bool NotificationService::start(string& coreAddress,
 					"{\"name\": \"" + m_name + "\"}");
 
 	// Create default security category
-	this->createSecurityCategories(m_mgtClient);
+	this->createSecurityCategories(m_mgtClient, m_dryRun);
 
 	// We have notitication instances loaded
 	// (1.1) Start the NotificationQueue
