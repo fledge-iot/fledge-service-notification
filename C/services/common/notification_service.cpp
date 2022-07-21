@@ -188,6 +188,8 @@ bool NotificationService::start(string& coreAddress,
 		// Register 'm_name' category name to Fledge Core
 		// for configuration changes update
 		this->registerCategory(m_name);
+	
+		this->createSecurityCategories(m_mgtClient, true);
 
 		m_logger->info("Dry run invocation - shutting down");
 		this->cleanupResources();
@@ -246,7 +248,8 @@ bool NotificationService::start(string& coreAddress,
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
 
-	// Create default security category
+	// Create default security category 
+	// note we do not get here if m_dryRun is true
 	this->createSecurityCategories(m_mgtClient, m_dryRun);
 
 	// We have notitication instances loaded
