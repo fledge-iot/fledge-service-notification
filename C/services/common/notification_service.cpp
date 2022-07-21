@@ -176,25 +176,26 @@ bool NotificationService::start(string& coreAddress,
 
 	if (m_dryRun)
 	{
-		if (!m_mgtClient->registerService(record))
-		{
-			m_logger->fatal("Unable to register service "
-					"\"Notification\" for service '" + m_name + "'");
 
-			this->cleanupResources();
-			return false;
-		}
-
-		// Register 'm_name' category name to Fledge Core
-		// for configuration changes update
-		this->registerCategory(m_name);
-	
 		this->createSecurityCategories(m_mgtClient, true);
 
 		m_logger->info("Dry run invocation - shutting down");
 		this->cleanupResources();
 		return true;
 	}
+
+	if (!m_mgtClient->registerService(record))
+	{
+		m_logger->fatal("Unable to register service "
+				"\"Notification\" for service '" + m_name + "'");
+
+		this->cleanupResources();
+		return false;
+	}
+	// Register 'm_name' category name to Fledge Core
+	// for configuration changes update
+	this->registerCategory(m_name);
+	
 
 	// Get 'm_name' category name to Fledge Core
 	ConfigCategory category = m_mgtClient->getCategory(m_name);
