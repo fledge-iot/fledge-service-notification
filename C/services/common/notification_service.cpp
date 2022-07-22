@@ -174,6 +174,16 @@ bool NotificationService::start(string& coreAddress,
 			     managementListener,	// Management port
 			     m_token);			// Startup token
 
+	if (m_dryRun)
+	{
+
+		this->createSecurityCategories(m_mgtClient, true);
+
+		m_logger->info("Dry run invocation - shutting down");
+		this->cleanupResources();
+		return true;
+	}
+
 	if (!m_mgtClient->registerService(record))
 	{
 		m_logger->fatal("Unable to register service "
@@ -182,10 +192,10 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
-
 	// Register 'm_name' category name to Fledge Core
 	// for configuration changes update
 	this->registerCategory(m_name);
+	
 
 	// Get 'm_name' category name to Fledge Core
 	ConfigCategory category = m_mgtClient->getCategory(m_name);
@@ -228,65 +238,60 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
-	if (! m_dryRun)
-	{
-		// Setup NotificationManager class
-		NotificationManager instances(m_name, m_mgtClient, this);
-		// Get all notification instances under Notifications
-		// and load plugins defined in all notifications 
-		instances.loadInstances();
 
-		m_mgtClient->addAuditEntry("NTFST",
-						"INFORMATION",
-						"{\"name\": \"" + m_name + "\"}");
+	// Setup NotificationManager class
+	NotificationManager instances(m_name, m_mgtClient, this);
+	// Get all notification instances under Notifications
+	// and load plugins defined in all notifications 
+	instances.loadInstances();
 
-		// Create default security category
-		this->createSecurityCategories(m_mgtClient, m_dryRun);
+	m_mgtClient->addAuditEntry("NTFST",
+					"INFORMATION",
+					"{\"name\": \"" + m_name + "\"}");
 
-		// We have notitication instances loaded
-		// (1.1) Start the NotificationQueue
-		// (1.2) Start the DeliveryQueue
-		NotificationQueue queue(m_name);
-		DeliveryQueue dQueue(m_name, m_delivery_threads);
+	// Create default security category 
+	// note we do not get here if m_dryRun is true
+	this->createSecurityCategories(m_mgtClient, m_dryRun);
 
-		// (2) Register notification interest, per assetName:
-		// by call Storage layer Notification API.
-		NotificationSubscription subscriptions(m_name, storageClient);
-		subscriptions.registerSubscriptions();
+	// We have notitication instances loaded
+	// (1.1) Start the NotificationQueue
+	// (1.2) Start the DeliveryQueue
+	NotificationQueue queue(m_name);
+	DeliveryQueue dQueue(m_name, m_delivery_threads);
 
-		// Notification data will be now received via NotificationApi server
-		// and added into the queue for processing.
+	// (2) Register notification interest, per assetName:
+	// by call Storage layer Notification API.
+	NotificationSubscription subscriptions(m_name, storageClient);
+	subscriptions.registerSubscriptions();
 
-		// .... wait until shutdown ...
+	// Notification data will be now received via NotificationApi server
+	// and added into the queue for processing.
 
-		// Wait for all the API threads to complete
-		m_api->wait();
+	// .... wait until shutdown ...
 
-		// Shutdown is starting ...
-		// NOTE:
-		// - Notification API listener is already down.
-		// - all subscriptions already unregistered
+	// Wait for all the API threads to complete
+	m_api->wait();
 
-		// Unregister from storage service
-		m_mgtClient->unregisterService();
+	// Shutdown is starting ...
+	// NOTE:
+	// - Notification API listener is already down.
+	// - all subscriptions already unregistered
 
-		// Stop management API
-		m_managementApi->stop();
+	// Unregister from storage service
+	m_mgtClient->unregisterService();
 
-		// Flush all data in the queues
-		queue.stop();
-		dQueue.stop();
+	// Stop management API
+	m_managementApi->stop();
 
-		m_logger->info("Notification service '" + m_name + "' shutdown completed.");
+	// Flush all data in the queues
+	queue.stop();
+	dQueue.stop();
 
-		m_mgtClient->addAuditEntry("NTFSD",
-						"INFORMATION",
-						"{\"name\": \"" + m_name + "\"}");
-	}
-	else
-	{
-		m_logger->info("Dry run invocation - shutting down");
-	}
+	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
+
+	m_mgtClient->addAuditEntry("NTFSD",
+					"INFORMATION",
+					"{\"name\": \"" + m_name + "\"}");
 
 	return true;
 }
