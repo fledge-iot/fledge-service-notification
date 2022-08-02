@@ -41,7 +41,11 @@ NotificationService::NotificationService(const string& myName,
 					 m_token(token),
 					 m_dryRun(false)
 {
+	// Set name
 	m_name = myName;
+
+	// Set type
+	m_type = SERVICE_TYPE;
 
 	// Default to a dynamic port
 	unsigned short servicePort = 0;
