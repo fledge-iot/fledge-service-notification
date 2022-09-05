@@ -37,6 +37,7 @@ class NotificationService : public ServiceAuthHandler
 					      unsigned short corePort);
 		void 			stop();
 		void			shutdown();
+		void			restart();
 		bool			isRunning() { return !m_shutdown; };
 		void			cleanupResources();
 		void			configChange(const std::string&,const std::string&);
@@ -72,5 +73,6 @@ class NotificationService : public ServiceAuthHandler
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
 		bool			m_dryRun;
+		bool			m_restartRequest;
 };
 #endif

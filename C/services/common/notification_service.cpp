@@ -39,7 +39,8 @@ NotificationService::NotificationService(const string& myName,
 					 const string& token) :
 					 m_shutdown(false),
 					 m_token(token),
-					 m_dryRun(false)
+					 m_dryRun(false),
+					 m_restartRequest(false)
 {
 	m_name = myName;
 
@@ -224,8 +225,16 @@ bool NotificationService::start(string& coreAddress,
 
 		this->cleanupResources();
 
-		// Unregister from Fledge
-		m_mgtClient->unregisterService();
+		if (m_restartRequest)
+		{
+			// Request the Fledge core to restart the service
+			m_mgtClient->restartService();
+		}
+		else
+		{
+			// Unregister from Fledge
+			m_mgtClient->unregisterService();
+		}
 
 		return false;
 	}
@@ -322,6 +331,18 @@ void NotificationService::shutdown()
 {
 	m_shutdown = true;
 	m_logger->info("Notification service '" + m_name + "' shutdown in progress ...");
+
+	this->stop();
+}
+
+/**
+ * Restart request
+ */
+void NotificationService::restart()
+{
+	m_restartRequest = true;
+	m_shutdown = true;
+	m_logger->info("Notification service '" + m_name + "' restart in progress ...");
 
 	this->stop();
 }
