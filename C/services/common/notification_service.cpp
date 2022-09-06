@@ -340,7 +340,7 @@ void NotificationService::shutdown()
 }
 
 /**
- * Restart request
+ * Restart request. Shut down the service and then request the core to restart the service.
  */
 void NotificationService::restart()
 {
