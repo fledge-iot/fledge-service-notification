@@ -55,7 +55,7 @@ if (NOT FLEDGE_FOUND)
         # Stop the build process
         message(FATAL_ERROR "Fledge plugin '${PROJECT_NAME}' build error.")
 endif()
-# On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set 
+# On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set
 
 # Add notification service common/include
 include_directories(../common/include)

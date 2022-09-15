@@ -37,7 +37,8 @@ class EvaluationType
 			All,
 			Average,
 			Minimum,
-			Maximum
+			Maximum,
+			Interval
 		} EVAL_TYPE;
 
 		EvaluationType(EVAL_TYPE type, time_t interval)
@@ -51,7 +52,7 @@ class EvaluationType
 		time_t			getInterval() const { return m_interval; };
 
 	private:
-		EVAL_TYPE		m_type;
+		EVAL_TYPE	m_type;
 		time_t		m_interval;
 		
 };
@@ -107,10 +108,17 @@ class NotificationElement
  * @param    notification	The Notification instance name.
  * @param    plugin		The Notification rule, builtin or
  *				a dynamically loaded plugin.
+ * @param    timeBased		Optional parameter for time based rule
  */
 class NotificationRule : public NotificationElement
 {
 	public:
+		typedef enum MultipleEvaluation {
+			M_ALL,
+			M_ANY,
+			M_INTERVAL
+		} MULTIPLE_EVALUATION;
+
 		NotificationRule(const std::string& name,
 				 const std::string& notification,
 				 RulePlugin* plugin);
@@ -125,11 +133,23 @@ class NotificationRule : public NotificationElement
 			m_assets.push_back(info);
 		};
 		std::string		toJSON();
+		bool			isTimeBased() { return m_timeBased != 0; };
+		void			setTimeBased(uint64_t timeBased) {
+						m_timeBased = timeBased;
+		};
+		bool			evaluateAny() {
+						return m_multiple_evaluaion == MULTIPLE_EVALUATION::M_ANY;
+					};
+		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval) {
+						m_multiple_evaluaion = eval;
+					};
 
 	private:
 		RulePlugin*		m_plugin;
 		std::vector<NotificationDetail>
 					m_assets;
+		bool			m_timeBased;
+		MULTIPLE_EVALUATION	m_multiple_evaluaion;
 };
 
 /**
@@ -188,6 +208,12 @@ class NotificationInstance
 		{
 			return (m_delivery ? m_delivery->getPlugin() : NULL);
 		};
+		std::vector<std::pair<std::string, NotificationDelivery *>>&
+				getDeliveryExtra()
+		{
+			return (m_deliveryExtra);
+		};
+
 		std::string		toJSON(bool showAll = false);
 		bool			isEnabled() const { return m_enable; };
 		NotificationType	getType() const { return m_type; };
@@ -213,13 +239,19 @@ class NotificationInstance
 		void			markAsZombie() { m_zombie = true; };
 		bool			isZombie() { return m_zombie; };
 		NotificationState	getState() { return m_state; };
+		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
+		void deleteDeliveryExtra(const std::string &deliveryName);
 
 	private:
 		const std::string	m_name;
 		bool			m_enable;
 		NotificationType	m_type;
 		NotificationRule*	m_rule;
-		NotificationDelivery*	m_delivery;
+		NotificationDelivery*	        m_delivery;
+		// Extra delivery channels
+		std::vector<std::pair<std::string, NotificationDelivery *>>
+					m_deliveryExtra;
+
 		time_t			m_lastSent;
 		NotificationState	m_state;
 		bool			m_zombie;
@@ -251,13 +283,20 @@ class NotificationManager
 		bool			APIcreateEmptyInstance(const std::string& name);
 		RulePlugin*		createRuleCategory(const std::string& name,
 							   const std::string& rule);
-		DeliveryPlugin*		createDeliveryCategory(const std::string& name,
-							       const std::string& delivery);
+		DeliveryPlugin*		createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery=false);
+		DeliveryPlugin*		deleteDeliveryCategory(const std::string& name, const std::string& deliveryName, bool extraDelivery=false);
+		string              getDeliveryCategoryName(const string& NotificationName, const string& delivery, bool extraDelivery, bool prefixOnly);
+
 		std::string		getPluginInfo(PLUGIN_INFORMATION* info);
 		bool			createInstance(const std::string& name,
 						       const std::string& category);
 		bool			setupInstance(const string& name,
 						      const ConfigCategory& config);
+
+		bool setupRuleDeliveryFirst(const string& name, const ConfigCategory& config);
+		bool setupDeliveryExtra(const string& name, const ConfigCategory& config);
+		bool addDelivery(const ConfigCategory& config, const string &deliveryCategoryName, ConfigCategory &deliveryConfig);
+
 		bool			removeInstance(const string& instanceName);
 		void			lockInstances() { m_instancesMutex.lock(); };
 		void			unlockInstances() { m_instancesMutex.unlock(); };
@@ -272,6 +311,7 @@ class NotificationManager
 		bool			APIdeleteInstance(const string& instanceName);
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
+		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
 
 	private:
 		PLUGIN_HANDLE		loadRulePlugin(const std::string& rulePluginName);

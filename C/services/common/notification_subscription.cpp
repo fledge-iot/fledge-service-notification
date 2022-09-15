@@ -157,6 +157,7 @@ void NotificationSubscription::registerSubscriptions()
 bool NotificationSubscription::addSubscription(const std::string& assetName,
 					       SubscriptionElement& element)
 {
+
 	// Get NotificationAPI instance
 	NotificationApi* api = NotificationApi::getInstance();
 	// Get callback URL
@@ -164,7 +165,7 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 
 	if (callBackURL.empty())
 	{
-		m_logger->fatal("Error while registering asset '" + \
+		m_logger->fatal(" Error while registering asset '" + \
 				assetName + "' for notification " + \
 				element.getNotificationName() + \
 				" callback URL is not set");
@@ -189,7 +190,8 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 	}
 
 	m_logger->info("Subscription for asset '" + assetName + \
-		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules"); 
+		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules");
+
 	return true;
 }
 
@@ -299,27 +301,65 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				       rulePluginInstance->getName().c_str());
 			return false;
 		}
-		m_logger->info("Triggers set for %s plugin",
-				       rulePluginInstance->getName().c_str());
+		m_logger->info("Triggers set for %s rule plugin: %s",
+				       rulePluginInstance->getName().c_str(),
+				       document.c_str());
 
 		string ruleName = instance->getRule()->getName();
+		NotificationRule* theRule = instance->getRule();
+		uint64_t timeBasedInterval = 0;
+
+		// Get "interval" parameter first
+		if (JSONData.HasMember("interval"))
+		{
+			timeBasedInterval = JSONData["interval"].GetUint64();
+			if (timeBasedInterval > 0)
+			{
+				theRule->setTimeBased(timeBasedInterval);
+				m_logger->debug("Setting time based rule %s with interval %ld",
+					ruleName.c_str(),
+					timeBasedInterval);
+			}
+		}
+
+		// Get "evaluate" parameter for Multiple Trigger Evaluation Control
+		if (JSONData.HasMember("evaluate"))
+		{
+			string value = JSONData["evaluate"].GetString();
+			if (value == "any")
+			{
+				theRule->setMultipleEvaluation(NotificationRule::MultipleEvaluation::M_ANY);
+			}
+			if (value == "interval" && timeBasedInterval > 0)
+			{
+				theRule->setMultipleEvaluation(NotificationRule::MultipleEvaluation::M_INTERVAL);
+			}
+		}
+
+		// Get "asset" objects
 		for (Value::ConstValueIterator itr = triggers.Begin();
 					       itr != triggers.End();
 					       ++itr)
 		{
 			// Get asset name
 			string asset = (*itr)["asset"].GetString();
-		 	// Get evaluation type and time period
-			EvaluationType type = this->getEvalType((*itr));
+
+	 		// Get optional evaluation type and time period for asset:
+			// (All :30, Minimum: 10, Maximum: 10, Average: 10)
+			// If time based rule is set then
+			// set EvaluationType::Interval for data buffer operation
+			EvaluationType type = theRule->isTimeBased() ?
+				EvaluationType(EvaluationType::Interval, timeBasedInterval) :
+				this->getEvalType(*itr);
+
 			// Create NotificationDetail object
 			NotificationDetail assetInfo(asset,
 						     ruleName,
 						     type);
 
 			// Add assetInfo to its rule
-			NotificationRule* theRule = instance->getRule();
 			theRule->addAsset(assetInfo);
- 
+
 			// Create subscription object
 			SubscriptionElement subscription(asset,
 							 instance->getName(),

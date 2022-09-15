@@ -16,7 +16,7 @@
 #include <logger.h>
 #include <iostream>
 #include <string>
-
+#include <service_handler.h>
 #include <storage_client.h>
 #include <config_handler.h>
 #include <notification_service.h>
@@ -33,19 +33,29 @@ using namespace std;
  * This class handles all Notification server components.
  *
  * @param    myName	The notification server name
+ * @param    token	The satrtup token passed at startup time by core server
  */
-NotificationService::NotificationService(const string& myName) :
-					 m_name(myName),
-					 m_shutdown(false)
+NotificationService::NotificationService(const string& myName,
+					 const string& token) :
+					 m_shutdown(false),
+					 m_token(token),
+					 m_dryRun(false),
+					 m_restartRequest(false)
 {
+	// Set name
+	m_name = myName;
+
+	// Set type
+	m_type = SERVICE_TYPE;
+
 	// Default to a dynamic port
 	unsigned short servicePort = 0;
 
 	// Create new logger instance
 	m_logger = new Logger(myName);
-	m_logger->setMinLevel("warning");
+	//m_logger->setMinLevel("warning");
 
-	m_logger->warn("Starting %s notification server", myName.c_str());
+	m_logger->info("Starting %s notification server", myName.c_str());
 
 	// One thread
 	unsigned int threads = 1;
@@ -54,7 +64,7 @@ NotificationService::NotificationService(const string& myName) :
 	m_api = new NotificationApi(servicePort, threads);
 
 	// Set NULL for other resources
-	m_managerClient = NULL;
+	m_mgtClient = NULL;
 	m_managementApi = NULL;
 }
 
@@ -64,7 +74,7 @@ NotificationService::NotificationService(const string& myName) :
 NotificationService::~NotificationService()
 {
 	delete m_api;
-	delete m_managerClient;
+	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
 }
@@ -82,8 +92,6 @@ bool NotificationService::start(string& coreAddress,
 {
 	// Dynamic port
 	unsigned short managementPort = (unsigned short)0;
-
-	m_logger->info("Starting Notification service '" + m_name +  "' ...");
 
 	// Instantiate ManagementApi class
 	m_managementApi = new ManagementApi(SERVICE_NAME, managementPort);
@@ -112,8 +120,8 @@ bool NotificationService::start(string& coreAddress,
 	m_api->setCallBackURL();
 
 	// Get management client
-	m_managerClient = new ManagementClient(coreAddress, corePort);
-	if (!m_managerClient)
+	m_mgtClient = new ManagementClient(coreAddress, corePort);
+	if (!m_mgtClient)
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge at " + \
@@ -126,7 +134,7 @@ bool NotificationService::start(string& coreAddress,
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
 	notificationConfig.setDescription("Notification services");
-	if (!m_managerClient->addCategory(notificationConfig, true))
+	if (!m_mgtClient->addCategory(notificationConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -150,7 +158,7 @@ bool NotificationService::start(string& coreAddress,
 	notificationServerConfig.setItemDisplayName("deliveryThreads",
 						    "Maximum number of delivery threads");
 	
-	if (!m_managerClient->addCategory(notificationServerConfig, true))
+	if (!m_mgtClient->addCategory(notificationServerConfig, true))
 	{
 		m_logger->fatal("Notification service '" + m_name + \
 				"' can not connect to Fledge ConfigurationManager at " + \
@@ -164,13 +172,24 @@ bool NotificationService::start(string& coreAddress,
 	unsigned short listenerPort = m_api->getListenerPort();
 	unsigned short managementListener = m_managementApi->getListenerPort();
 	ServiceRecord record(m_name,
-			     "Notification",		// Service type
+			     SERVICE_TYPE,		// Service type
 			     "http",			// Protocol
 			     "localhost",		// Listening address
 			     listenerPort,		// Service port
-			     managementListener);	// Management port
+			     managementListener,	// Management port
+			     m_token);			// Startup token
 
-	if (!m_managerClient->registerService(record))
+	if (m_dryRun)
+	{
+
+		this->createSecurityCategories(m_mgtClient, true);
+
+		m_logger->info("Dry run invocation - shutting down");
+		this->cleanupResources();
+		return true;
+	}
+
+	if (!m_mgtClient->registerService(record))
 	{
 		m_logger->fatal("Unable to register service "
 				"\"Notification\" for service '" + m_name + "'");
@@ -178,16 +197,13 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
+	// Register 'm_name' category name to Fledge Core
+	// for configuration changes update
+	this->registerCategory(m_name);
+	
 
-	// Register NOTIFICATION_CATEGORY to Fledge Core
-	unsigned int retryCount = 0;
-	while (m_managerClient->registerCategory(NOTIFICATION_CATEGORY) == false &&
-		++retryCount < 10)
-	{
-		sleep(2 * retryCount);
-	}
-	registerCategory(m_name);
-	ConfigCategory category = m_managerClient->getCategory(m_name);
+	// Get 'm_name' category name to Fledge Core
+	ConfigCategory category = m_mgtClient->getCategory(m_name);
 	if (category.itemExists("logLevel"))
 	{
 		m_logger->setMinLevel(category.getValue("logLevel"));
@@ -202,17 +218,27 @@ bool NotificationService::start(string& coreAddress,
 		m_delivery_threads = DEFAULT_DELIVERY_WORKER_THREADS;
 	}
 
+	m_logger->info("Starting Notification service '" + m_name +  "' ...");
+
 	// Get Storage service
 	ServiceRecord storageInfo("Fledge Storage");
-	if (!m_managerClient->getService(storageInfo))
+	if (!m_mgtClient->getService(storageInfo))
 	{
 		m_logger->fatal("Unable to find Fledge storage "
 				"connection info for service '" + m_name + "'");
 
 		this->cleanupResources();
 
-		// Unregister from Fledge
-		m_managerClient->unregisterService();
+		if (m_restartRequest)
+		{
+			// Request the Fledge core to restart the service
+			m_mgtClient->restartService();
+		}
+		else
+		{
+			// Unregister from Fledge
+			m_mgtClient->unregisterService();
+		}
 
 		return false;
 	}
@@ -225,15 +251,20 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
+
 	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_managerClient, this);
+	NotificationManager instances(m_name, m_mgtClient, this);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
 	instances.loadInstances();
 
-	m_managerClient->addAuditEntry("NTFST",
+	m_mgtClient->addAuditEntry("NTFST",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
+
+	// Create default security category 
+	// note we do not get here if m_dryRun is true
+	this->createSecurityCategories(m_mgtClient, m_dryRun);
 
 	// We have notitication instances loaded
 	// (1.1) Start the NotificationQueue
@@ -260,7 +291,7 @@ bool NotificationService::start(string& coreAddress,
 	// - all subscriptions already unregistered
 
 	// Unregister from storage service
-	m_managerClient->unregisterService();
+	m_mgtClient->unregisterService();
 
 	// Stop management API
 	m_managementApi->stop();
@@ -271,7 +302,7 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_managerClient->addAuditEntry("NTFSD",
+	m_mgtClient->addAuditEntry("NTFSD",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
 
@@ -309,6 +340,18 @@ void NotificationService::shutdown()
 }
 
 /**
+ * Restart request. Shut down the service and then request the core to restart the service.
+ */
+void NotificationService::restart()
+{
+	m_restartRequest = true;
+	m_shutdown = true;
+	m_logger->info("Notification service '" + m_name + "' restart in progress ...");
+
+	this->stop();
+}
+
+/**
  * Cleanup resources and stop services
  */
 void NotificationService::cleanupResources()
@@ -320,6 +363,80 @@ void NotificationService::cleanupResources()
 }
 
 /**
+ * Create an extra delivery
+ */
+void NotificationService::configChildCreate(const std::string& parent_category, const string& categoryName, const string& category)
+{
+
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = parent_category;
+
+		// It's a notification category
+		notifications->lockInstances();
+		instance = notifications->getNotificationInstance(notificationName);
+		notifications->unlockInstances();
+
+		if (instance)
+		{
+			ConfigCategory config(categoryName, category);
+
+			ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
+
+			notifications->addDelivery(notificationConfig, categoryName, config);
+		}
+
+	if (instance == NULL)
+	{
+		// Log message
+	}
+
+}
+
+
+/**
+ * Delete an extra delivery
+ */
+void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
+{
+	NotificationManager* notifications = NotificationManager::getInstance();
+	NotificationInstance* instance = NULL;
+	string notificationName;
+
+	notificationName = parent_category;
+
+	// It's a notification category
+	notifications->lockInstances();
+	instance = notifications->getNotificationInstance(notificationName);
+	notifications->unlockInstances();
+
+	if (instance)
+	{
+		bool ret = false;
+		string deliveryName;
+		std::size_t found = categoryName.find(CATEGORY_DELIVERY_EXTRA);
+		if (found != std::string::npos)
+		{
+			deliveryName = categoryName.substr(found + strlen(CATEGORY_DELIVERY_EXTRA));
+			NotificationManager* manager = NotificationManager::getInstance();
+
+			DeliveryPlugin* deliveryPlugin = manager->deleteDeliveryCategory(notificationName,
+											deliveryName);
+
+			ret = deliveryPlugin != NULL;
+			// Delete plugin object
+			delete deliveryPlugin;
+		}
+	}	
+	if (instance == NULL)
+	{
+		// Log message
+	}
+}
+
+/**
  * Configuration change notification
  *
  * @param    categoryName	The category name which configuration has been changed
@@ -328,6 +445,7 @@ void NotificationService::cleanupResources()
 void NotificationService::configChange(const string& categoryName,
 				       const string& category)
 {
+
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 
@@ -342,12 +460,21 @@ void NotificationService::configChange(const string& categoryName,
 		return;
 	}
 
-	std::size_t found;
+	// Update the  Security category
+	if (categoryName.compare(m_name+"Security") == 0)
+	{
+		this->updateSecurityCategory(category);
+		return;
+	}
 
+	std::size_t found;
 	std::size_t foundRule = categoryName.find("rule");
-	std::size_t foundDelivery = categoryName.find("delivery");
+	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
+	std::size_t foundExtraDelivery = categoryName.find(CATEGORY_DELIVERY_EXTRA);
+
 	if (foundRule == std::string::npos &&
-	    foundDelivery == std::string::npos)
+	    foundDelivery == std::string::npos &&
+	    foundExtraDelivery == std::string::npos)
 	{
 		// It's a notification category
 		notifications->lockInstances();
@@ -377,7 +504,7 @@ void NotificationService::configChange(const string& categoryName,
 			{
 				return;
 			}
-			
+
 			// Call plugin reconfigure
 			instance->getRulePlugin()->reconfigure(category);
 
@@ -425,7 +552,10 @@ void NotificationService::configChange(const string& categoryName,
 		{
 			// Get related notification instance
 			notifications->lockInstances();
-			instance = notifications->getNotificationInstance(categoryName.substr(8));
+
+			string NotificationName = categoryName.substr(strlen(CATEGORY_DELIVERY_PREFIX));
+
+			instance = notifications->getNotificationInstance(NotificationName);
 			notifications->unlockInstances();
 			if (instance && instance->getDeliveryPlugin())
 			{
@@ -434,13 +564,48 @@ void NotificationService::configChange(const string& categoryName,
 				return;
 			}
 		}
+
+		// Check it's an extra delivery channel category
+		if (foundExtraDelivery != std::string::npos)
+		{
+			m_logger->debug("Configuration change for extra delivery channel %s",
+			categoryName.c_str());
+
+			// Get related notification instance
+			notifications->lockInstances();
+
+			// Get notification name as first part of category name
+			string NotificationName = categoryName.substr(0, foundExtraDelivery);
+
+			instance = notifications->getNotificationInstance(NotificationName);
+			notifications->unlockInstances();
+
+			if (instance)
+			{
+				// Fetch all extra delivery channels for this nitification
+				std::vector<std::pair<std::string, NotificationDelivery *>>& extra = instance->getDeliveryExtra();
+				for (auto item = extra.begin();
+					  item != extra.end();
+					  ++item)
+				{
+					if (item->first == categoryName  && item->second->getPlugin())
+					{
+						// Call plugin reconfigure for the found extra delivery channel
+						item->second->getPlugin()->reconfigure(category);
+						return;
+					}
+				}
+			}
+		}
 	}
 
 	if (instance == NULL)
 	{
 		// Log message
 	}
+
 }
+
 
 /**
  * Register a configuration category for updates
@@ -449,12 +614,93 @@ void NotificationService::configChange(const string& categoryName,
  */
 void NotificationService::registerCategory(const string& categoryName)
 {
-	ConfigHandler* configHandler = ConfigHandler::getInstance(m_managerClient);
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
 	// Call registerCategory only once
 	if (configHandler &&
 	    m_registerCategories.find(categoryName) == m_registerCategories.end())
 	{
 		configHandler->registerCategory(this, categoryName);
+
 		m_registerCategories[categoryName] = true;
+	}
+}
+
+/**
+ * Register the notification for all the child categories of the requested parent one
+ *
+ * @param    categoryName	Parent category for which registation is requested
+ */
+void NotificationService::registerCategoryChild(const string& categoryName)
+{
+	ConfigHandler* configHandler = ConfigHandler::getInstance(m_mgtClient);
+	// Call registerCategory only once
+	if (configHandler &&
+	    m_registerCategoriesChild.find(categoryName) == m_registerCategoriesChild.end())
+	{
+		configHandler->registerCategoryChild(this, categoryName);
+
+		m_registerCategoriesChild[categoryName] = true;
+	}
+}
+
+/**
+ * Send to the control dispatcher service
+ *
+ * @param path		The path component of the URL to send
+ * @param payload	The JSON paylaod
+ * @return bool		Return true if the paylaod was sent
+ */
+bool NotificationService::sendToDispatcher(const string& path, const string& payload)
+{
+	// Send the control message to the south service
+	try {
+		if (!m_mgtClient)
+		{
+			Logger::getLogger()->error("Missing connection to management client, "
+					"unable to deliver control message");
+			return false;
+		}
+
+		ServiceRecord service("dispatcher");
+		if (!m_mgtClient->getService(service))
+		{
+			Logger::getLogger()->error("Unable to find dispatcher service 'Dispatcher'");
+			return false;
+		}
+		string address = service.getAddress();
+		unsigned short port = service.getPort();
+		char addressAndPort[80];
+		snprintf(addressAndPort, sizeof(addressAndPort), "%s:%d", address.c_str(), port);
+		SimpleWeb::Client<SimpleWeb::HTTP> http(addressAndPort);
+
+		try {
+			SimpleWeb::CaseInsensitiveMultimap headers = {{"Content-Type", "application/json"}};
+			// Pass Notification service bearer token to dispatcher
+			string regToken = m_mgtClient->getRegistrationBearerToken();
+			if (regToken != "")
+			{
+				headers.emplace("Authorization", "Bearer " + regToken);
+			}
+
+			auto res = http.request("POST", path, payload, headers);
+			if (res->status_code.compare("202 Accepted"))
+			{
+				Logger::getLogger()->error("Failed to send control request to dispatcher service, %s",
+						res->status_code.c_str());
+				Logger::getLogger()->error("Failed Path %s, %s", path.c_str(), payload.c_str());
+				return false;
+			}
+		} catch (exception& e) {
+			Logger::getLogger()->error("Failed to send control operation to dispatcher service, %s",
+						e.what());
+			Logger::getLogger()->error("Failed Path %s, %s", path.c_str(), payload.c_str());
+			return false;
+		}
+
+		return true;
+	}
+	catch (exception &e) {
+		Logger::getLogger()->error("Failed to send control operation to dispatcher service, %s", e.what());
+		return false;
 	}
 }
