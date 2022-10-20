@@ -244,6 +244,7 @@ void NotificationApi::start() {
  * Start method for HTTP server
  */
 void NotificationApi::startServer() {
+	Logger::getLogger()->info("NotificationApi::startServer()");
 	m_server->start();
 }
 
@@ -251,6 +252,7 @@ void NotificationApi::startServer() {
  * Stop method for HTTP server
  */
 void NotificationApi::stopServer() {
+	Logger::getLogger()->info("NotificationApi::stopServer()");
 	m_server->stop();
 }
 
@@ -268,6 +270,14 @@ void NotificationApi::stop()
 void NotificationApi::wait() {
 	m_thread->join();
 }
+
+/**
+ * Check whether HTTP server has shutdown
+ */
+bool NotificationApi::serverDown() {
+	return m_thread->joinable();
+}
+
 
 /**
  * Initialise the API entry points for the common data resource and
@@ -359,6 +369,7 @@ void NotificationApi::respond(shared_ptr<HttpServer::Response> response,
 void NotificationApi::processCallback(shared_ptr<HttpServer::Response> response,
 				      shared_ptr<HttpServer::Request> request)
 {
+	PRINT_FUNC;
 	try
 	{
 		// URL decode assetName

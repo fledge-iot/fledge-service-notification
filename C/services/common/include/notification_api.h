@@ -65,6 +65,7 @@ class NotificationApi
 		void		start();
 		void		startServer();
 		void		wait();
+		bool		serverDown();
 		void		stop();
 		void		stopServer();
 		unsigned short	getListenerPort();
