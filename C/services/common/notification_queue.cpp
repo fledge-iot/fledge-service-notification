@@ -768,6 +768,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 
 		// Get all assets belonging to current rule
 		vector<NotificationDetail>& assets = instance->getRule()->getAssets();
+		Logger::getLogger()->info("%s:%d: assets.size()=%d", __FUNCTION__, __LINE__, assets.size());
 
 		// Iterate through assets
 		for (auto itr = assets.begin();
@@ -782,7 +783,9 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 						*itr);
 		}
 
-		PRINT_FUNC;
+		Logger::getLogger()->info("%s:%d: results.size()=%d, assets.size()=%d, instance->getRule()->evaluateAny()=%s", 
+									__FUNCTION__, __LINE__, results.size(), assets.size(), instance->getRule()->evaluateAny()?"true":"false");
+		
 		// Eval rule? We have all assets data or at least one, given the
 		// rule multiple evaluation value set to MultipleEvaluation::M_ANY
 		if (results.size() == assets.size() ||
@@ -851,6 +854,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 	{
 	case EvaluationType::SingleItem:
 	case EvaluationType::Interval:
+		PRINT_FUNC;
 		results[assetName].type = info.getType();
 		// Add all Reading data
 		this->setSingleItemData(readingsData, results);
@@ -954,6 +958,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 void NotificationQueue::sendNotification(map<string, AssetData>& results,
 					 SubscriptionElement& subscription)
 {
+	PRINT_FUNC;
 	if (subscription.getInstance())
 	{	
 		PRINT_FUNC;
@@ -1534,22 +1539,25 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 void NotificationQueue::setSingleItemData(vector<NotificationDataElement *>& readingsData,
 					  map<string, AssetData>& results)
 {
+	PRINT_FUNC;
 	for (auto item = readingsData.begin();
 		  item != readingsData.end();
 		   ++item)
 	{
 		const std::vector<Reading *>& readings = (*item)->getData()->getAllReadings();
+		Logger::getLogger()->info("NotificationQueue::setSingleItemData: readings vector length=%d", readings.size());
 		for (auto r = readings.begin();
 			  r != readings.end();
 			  ++r)
 		{
+			// Logger::getLogger()->info("NotificationQueue::setSingleItemData: (*r)->getAssetName()=%s", (*r)->getAssetName().c_str());
 			results[(*r)->getAssetName()].rData.push_back(*r);
 		}
 	}
 }
 
 /**
- * Build notification JOSN data for time aggregated data
+ * Build notification JSON data for time aggregated data
  *
  * @param    readyData		Input map with ready  time aggregated data
  * @param    output		The output string to pass to plugin_eval

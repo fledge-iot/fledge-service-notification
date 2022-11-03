@@ -136,6 +136,7 @@ void NotificationSubscription::registerSubscriptions()
 		}
 
 		// Create a new subscription
+		m_logger->info("NotificationSubscription::registerSubscriptions(): calling createSubscription()");
 		bool ret = this->createSubscription(instance);
 	}
 	// Unlock instances
@@ -176,8 +177,11 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 	 * We can have different Subscriptions for each asset:
 	 * add new one into the vector
 	 */
+	m_logger->info("NotificationSubscription::addSubscription(): adding SubscriptionElement to m_subscriptions[%s]", assetName.c_str());
 	m_subscriptions[assetName].push_back(element);
-
+	m_logger->info("NotificationSubscription::addSubscription(): AFTER: m_subscriptions.size()=%d, m_subscriptions[%s] has %d elements", 
+						m_subscriptions.size(), assetName.c_str(), m_subscriptions[assetName].size());
+	
 	// Register once per asset Notification interest to Storage server
 	if (m_subscriptions[assetName].size() == 1)
 	{
@@ -358,6 +362,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 						     type);
 
 			// Add assetInfo to its rule
+			Logger::getLogger()->info("Calling theRule->addAsset(assetInfo): rulename=%s, assetname=%s", theRule->getName().c_str(), asset.c_str());
 			theRule->addAsset(assetInfo);
 
 			// Create subscription object
@@ -391,7 +396,7 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 	PRINT_FUNC;
 	map<string, vector<SubscriptionElement>>&
 		allSubscriptions = this->getAllSubscriptions();
-	PRINT_FUNC;
+	Logger::getLogger()->info("NotificationSubscription::removeSubscription: BEFORE: Number of subscriptions=%d", allSubscriptions.size());
 	auto it = allSubscriptions.find(assetName);
 	bool ret = it != allSubscriptions.end();
 	PRINT_FUNC;
@@ -462,13 +467,16 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 			}
 		}
 
+		Logger::getLogger()->info("NotificationSubscription::removeSubscription: elems.size()=%d", elems.size());
+		
 		// 4- Remove subscription if array is empty
 		if (!elems.size())
 		{
+			PRINT_FUNC;
 			allSubscriptions.erase(it);
 		}
 	}
-	PRINT_FUNC;
+	Logger::getLogger()->info("NotificationSubscription::removeSubscription: AFTER: Number of subscriptions=%d", allSubscriptions.size());
 	this->unlockSubscriptions();
 	PRINT_FUNC;
 }

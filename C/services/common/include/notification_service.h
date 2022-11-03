@@ -35,7 +35,7 @@ class NotificationService : public ServiceAuthHandler
 		const std::string&	getName() { return m_name; };
 		bool 			start(std::string& coreAddress,
 					      unsigned short corePort);
-		bool			connectToStorage();
+		bool 			connectToStorage(std::map<std::thread::id, std::atomic<int>>* m);
 		void 			stop(bool unregisterSubscriptions=true);
 		void			shutdown();
 		void			restart();
