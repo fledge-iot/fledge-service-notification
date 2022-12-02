@@ -35,7 +35,8 @@ class NotificationService : public ServiceAuthHandler
 		const std::string&	getName() { return m_name; };
 		bool 			start(std::string& coreAddress,
 					      unsigned short corePort);
-		void 			stop();
+		bool 			connectToStorage(std::map<std::thread::id, std::atomic<int>>* m);
+		void 			stop(bool unregisterSubscriptions=true);
 		void			shutdown();
 		void			restart();
 		bool			isRunning() { return !m_shutdown; };
@@ -58,6 +59,9 @@ class NotificationService : public ServiceAuthHandler
 		void			setDryRun() { m_dryRun = true; };
 		bool			sendToDispatcher(const string& path,
 							const string& payload);
+		bool			getStorageServiceRestartPendingFlag() { return m_storageServiceRestartPending; }
+		bool			setStorageServiceRestartPendingFlag() { m_storageServiceRestartPending = true; }
+		bool			resetStorageServiceRestartPendingFlag() { m_storageServiceRestartPending = false; }
 
 	private:
 		Logger*			m_logger;
@@ -74,5 +78,6 @@ class NotificationService : public ServiceAuthHandler
 		const std::string	m_token;
 		bool			m_dryRun;
 		bool			m_restartRequest;
+		bool			m_storageServiceRestartPending;
 };
 #endif

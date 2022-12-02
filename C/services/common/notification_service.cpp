@@ -40,7 +40,8 @@ NotificationService::NotificationService(const string& myName,
 					 m_shutdown(false),
 					 m_token(token),
 					 m_dryRun(false),
-					 m_restartRequest(false)
+					 m_restartRequest(false),
+					 m_storageServiceRestartPending(false)
 {
 	// Set name
 	m_name = myName;
@@ -79,6 +80,43 @@ NotificationService::~NotificationService()
 	delete m_logger;
 }
 
+bool NotificationService::connectToStorage(std::map<std::thread::id, std::atomic<int>>* m)
+{
+	// Get Storage service
+	ServiceRecord storageInfo("Fledge Storage");
+	if (!m_mgtClient->getService(storageInfo))
+	{
+		m_logger->fatal("Unable to find Fledge storage "
+				"connection info for service '" + m_name + "'");
+
+		this->cleanupResources();
+
+		if (m_restartRequest)
+		{
+			PRINT_FUNC;
+			// Request the Fledge core to restart the service
+			m_mgtClient->restartService();
+		}
+		else if (!getStorageServiceRestartPendingFlag())
+		{
+			PRINT_FUNC;
+			// Unregister from Fledge
+			m_mgtClient->unregisterService();
+		}
+
+		return false;
+	}
+	m_logger->info("Connect to storage on %s:%d",
+		       storageInfo.getAddress().c_str(),
+		       storageInfo.getPort());
+
+	// Setup StorageClient
+	m_storage = new StorageClient(storageInfo.getAddress(), storageInfo.getPort(), m);
+	
+	return true;
+}
+
+
 /**
  * Start the notification service
  * by connecting to Fledge core service.
@@ -94,26 +132,44 @@ bool NotificationService::start(string& coreAddress,
 	unsigned short managementPort = (unsigned short)0;
 
 	// Instantiate ManagementApi class
+	PRINT_FUNC;
 	m_managementApi = new ManagementApi(SERVICE_NAME, managementPort);
+	PRINT_FUNC;
 	m_managementApi->registerService(this);
+	PRINT_FUNC;
 	m_managementApi->start();
+	PRINT_FUNC;
 
 	// Allow time for the listeners to start before we register
 	while(m_managementApi->getListenerPort() == 0)
 	{
+		PRINT_FUNC;
 		sleep(1);
 	}
 
-        // Enable http API methods
-        m_api->initResources();
+    // Enable http API methods
+    PRINT_FUNC;
+    m_api->initResources();
 
-        // Start the NotificationApi on service port
+    // Start the NotificationApi on service port
+    PRINT_FUNC;
 	m_api->start();
+	PRINT_FUNC;
+	sleep(1); // this delay is required only when new storage service instance has been re-started, but seems no way to differentiate that case presently
+	PRINT_FUNC;
 
 	// Allow time for the listeners to start before we continue
-	while(m_api->getListenerPort() == 0)
+	try
 	{
-		sleep(1);
+		while(m_api->getListenerPort() == 0)
+		{
+			PRINT_FUNC;
+			sleep(1);
+		}
+	}
+	catch(std::exception const& ex)
+	{
+		m_logger->fatal("Error during m_api->getListenerPort(): error=%s", ex.what());
 	}
 
 	// Set Notification callback url prefix
@@ -200,6 +256,7 @@ bool NotificationService::start(string& coreAddress,
 	// Register 'm_name' category name to Fledge Core
 	// for configuration changes update
 	this->registerCategory(m_name);
+	this->registerCategory("storage_service_restart");
 	
 
 	// Get 'm_name' category name to Fledge Core
@@ -220,38 +277,11 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Starting Notification service '" + m_name +  "' ...");
 
-	// Get Storage service
-	ServiceRecord storageInfo("Fledge Storage");
-	if (!m_mgtClient->getService(storageInfo))
-	{
-		m_logger->fatal("Unable to find Fledge storage "
-				"connection info for service '" + m_name + "'");
-
-		this->cleanupResources();
-
-		if (m_restartRequest)
-		{
-			// Request the Fledge core to restart the service
-			m_mgtClient->restartService();
-		}
-		else
-		{
-			// Unregister from Fledge
-			m_mgtClient->unregisterService();
-		}
-
+	bool rv = connectToStorage(NULL);
+	m_logger->info("connectToStorage() 1 returned %s", rv?"true":"false");
+	if (rv == false)
 		return false;
-	}
-	m_logger->info("Connect to storage on %s:%d",
-		       storageInfo.getAddress().c_str(),
-		       storageInfo.getPort());
-
-	// Setup StorageClient
-	StorageClient storageClient(storageInfo.getAddress(),
-				    storageInfo.getPort());
-	m_storage = &storageClient;
-
-
+	
 	// Setup NotificationManager class
 	NotificationManager instances(m_name, m_mgtClient, this);
 	// Get all notification instances under Notifications
@@ -266,16 +296,16 @@ bool NotificationService::start(string& coreAddress,
 	// note we do not get here if m_dryRun is true
 	this->createSecurityCategories(m_mgtClient, m_dryRun);
 
-	// We have notitication instances loaded
+	// We have notification instances loaded
 	// (1.1) Start the NotificationQueue
 	// (1.2) Start the DeliveryQueue
-	NotificationQueue queue(m_name);
-	DeliveryQueue dQueue(m_name, m_delivery_threads);
+	NotificationQueue *queue = new NotificationQueue(m_name);
+	DeliveryQueue *dQueue = new DeliveryQueue(m_name, m_delivery_threads);
 
 	// (2) Register notification interest, per assetName:
 	// by call Storage layer Notification API.
-	NotificationSubscription subscriptions(m_name, storageClient);
-	subscriptions.registerSubscriptions();
+	NotificationSubscription *subscriptions = new NotificationSubscription(m_name, *m_storage);
+	subscriptions->registerSubscriptions();
 
 	// Notification data will be now received via NotificationApi server
 	// and added into the queue for processing.
@@ -283,8 +313,111 @@ bool NotificationService::start(string& coreAddress,
 	// .... wait until shutdown ...
 
 	// Wait for all the API threads to complete
-	m_api->wait();
+	// m_api->wait();
+	while (1)
+	{
+		if(m_api->serverDown())
+		{
+			m_logger->info("m_api->serverDown() returned TRUE");
+			m_api->wait(); // let the HTTP server thread join
+			m_logger->info("m_api->wait() returned here");
+			
+			m_logger->info("HTTP server down, thread joined, getStorageServiceRestartPendingFlag()=%s", 
+							getStorageServiceRestartPendingFlag()?"true":"false");
+			
+			if (getStorageServiceRestartPendingFlag())
+			{
+				PRINT_FUNC;
+#if 1
+				// NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
+				subscriptions->removeAllSubscriptions(getStorageServiceRestartPendingFlag());
+				delete subscriptions;
+#endif
+				PRINT_FUNC;
 
+#if 0
+				// Flush all data in the queues
+				queue->stop(); delete queue;
+				dQueue->stop(); delete dQueue;
+#endif
+
+				PRINT_FUNC;
+				m_api->start();
+				
+				PRINT_FUNC;
+				sleep(1); 	// this delay is required only when new storage service instance has been started
+							// but seems no way to differentiate that case
+				PRINT_FUNC;
+
+				// Allow time for the listeners to start before we continue
+				try
+				{
+					while(m_api->getListenerPort() == 0)
+					{
+						PRINT_FUNC;
+						sleep(1);
+					}
+				}
+				catch(std::exception const& ex)
+				{
+					m_logger->fatal("Error during m_api->getListenerPort(): error=%s", ex.what());
+				}
+
+				PRINT_FUNC;
+
+				m_logger->info("%s:%d: BEFORE: m_storage->getUrlBase().str().c_str()=%s", __FUNCTION__, __LINE__, m_storage->getUrlBase().str().c_str());
+
+				m_logger->info("calling connectToStorage(): prev m_storage seqMap has %d entries", m_storage->getSeqNumMap()?0:m_storage->getSeqNumMap()->size());
+				StorageClient* prev_storage_client = m_storage;
+				bool rv = connectToStorage(m_storage->getSeqNumMap());
+				m_logger->info("connectToStorage() 2 returned %s", rv?"true":"false");
+				
+				delete prev_storage_client;
+				// previous storage service is now gone, so can't/needn't unregister subscriptions done to it
+
+				m_logger->info("%s:%d: AFTER: m_storage->getUrlBase().str().c_str()=%s", __FUNCTION__, __LINE__, m_storage->getUrlBase().str().c_str());
+				
+				if (rv == false)
+					return false;
+
+				// Set Notification callback url prefix
+				m_api->setCallBackURL();
+				
+				m_mgtClient->addAuditEntry("NTFST",
+								"INFORMATION",
+								"{\"name\": \"" + m_name + "\"}");
+
+				PRINT_FUNC;
+
+#if 0
+
+				// We have notification instances loaded
+				// (1.1) Start the NotificationQueue
+				// (1.2) Start the DeliveryQueue
+				queue = new NotificationQueue(m_name);
+				dQueue = new DeliveryQueue(m_name, m_delivery_threads);
+
+				PRINT_FUNC;
+#endif
+
+#if 1
+				// (2) Register notification interest, per assetName:
+				// by calling Storage layer Notification API.
+				NotificationSubscription *subscriptions = new NotificationSubscription(m_name, *m_storage);
+				subscriptions->registerSubscriptions();
+#endif
+				PRINT_FUNC;
+				resetStorageServiceRestartPendingFlag();
+			}
+			else
+			{
+				PRINT_FUNC;
+				break;
+			}
+		}
+		sleep(1);
+	}
+	
 	// Shutdown is starting ...
 	// NOTE:
 	// - Notification API listener is already down.
@@ -297,8 +430,8 @@ bool NotificationService::start(string& coreAddress,
 	m_managementApi->stop();
 
 	// Flush all data in the queues
-	queue.stop();
-	dQueue.stop();
+	queue->stop(); delete queue;
+	dQueue->stop(); delete dQueue;
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
@@ -313,18 +446,22 @@ bool NotificationService::start(string& coreAddress,
  * Unregister notification subscriptions and
  * stop NotificationAPi listener
  */
-void NotificationService::stop()
+void NotificationService::stop(bool unregisterSubscriptions)
 {
 	m_logger->info("Stopping Notification service '" + m_name + "' ...");
 
-	// Unregister notifications to storage service
-	NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
-	if (subscriptions)
+	if (unregisterSubscriptions)
 	{
-		subscriptions->unregisterSubscriptions();
+		// Unregister notifications to storage service
+		NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
+		if (subscriptions)
+		{
+			subscriptions->unregisterSubscriptions();
+		}
 	}
 
 	// Stop the NotificationApi
+	m_logger->info("1. Calling m_api->stop()");
 	m_api->stop();
 }
 
@@ -449,6 +586,8 @@ void NotificationService::configChange(const string& categoryName,
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 
+	m_logger->info("NotificationService::configChange(): categoryName=%s, category=%s", categoryName.c_str(), category.c_str());
+
 	if (categoryName == m_name)
 	{
 		ConfigCategory config(categoryName, category);
@@ -464,6 +603,17 @@ void NotificationService::configChange(const string& categoryName,
 	if (categoryName.compare(m_name+"Security") == 0)
 	{
 		this->updateSecurityCategory(category);
+		return;
+	}
+
+	// Update the  Security category
+	if (categoryName.compare("storage_service_restart") == 0)
+	{
+		m_logger->info("Notification service received storage_service_restart in configChange");
+		m_logger->info("2. Calling m_api->stop()");
+		m_api->stop();
+		setStorageServiceRestartPendingFlag();
+
 		return;
 	}
 

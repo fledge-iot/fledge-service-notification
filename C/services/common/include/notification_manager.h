@@ -50,6 +50,11 @@ class EvaluationType
 
 		EVAL_TYPE		getType() const { return m_type; };
 		time_t			getInterval() const { return m_interval; };
+		inline bool operator==(const EvaluationType& x) const
+		{
+			return ( x.m_type==m_type &&
+				x.m_interval==m_interval );
+		}
 
 	private:
 		EVAL_TYPE	m_type;
@@ -74,6 +79,13 @@ class NotificationDetail
 		const EvaluationType::EVAL_TYPE
 					getType() const { return m_value.getType(); };
 		const time_t		getInterval() const { return m_value.getInterval(); };
+
+		inline bool operator==(const NotificationDetail& x) const
+		{
+			return ( x.m_asset==m_asset &&
+				x.m_rule==m_rule &&
+				x.m_value==m_value );
+		}
 
 	private:
 		std::string		m_asset;
@@ -130,7 +142,18 @@ class NotificationRule : public NotificationElement
 		// Add an asset name
 		void			addAsset(NotificationDetail& info)
 		{
+			for (const auto & a : m_assets)
+			{
+				if (a==info)
+				{
+					Logger::getLogger()->info("NotificationRule::addAsset(): Asset %s already present in rule %s, not adding again, m_assets.size()=%d", 
+										info.getAssetName().c_str(), info.getRuleName().c_str(), m_assets.size());
+					return;
+				}
+			}
 			m_assets.push_back(info);
+			Logger::getLogger()->info("NotificationRule::addAsset(): Added asset %s to rule %s, m_assets.size()=%d", 
+										info.getAssetName().c_str(), info.getRuleName().c_str(), m_assets.size());
 		};
 		std::string		toJSON();
 		bool			isTimeBased() { return m_timeBased != 0; };

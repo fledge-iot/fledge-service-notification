@@ -322,6 +322,7 @@ NotificationManager::NotificationManager(const std::string& serviceName,
  */
 NotificationManager::~NotificationManager()
 {
+	PRINT_FUNC;
 	lock_guard<mutex> guard(m_instancesMutex);
 	// Mark is instance as zombie
         for (auto it = m_instances.begin();

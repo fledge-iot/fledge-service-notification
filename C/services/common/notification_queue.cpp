@@ -244,6 +244,7 @@ bool NotificationQueue::addElement(NotificationQueueElement* element)
 {
 	if (!m_running)
 	{
+		PRINT_FUNC;
 		// Don't add new elements if queue is being stopped
 		delete element;
 		return true;
@@ -251,6 +252,7 @@ bool NotificationQueue::addElement(NotificationQueueElement* element)
 
 	lock_guard<mutex> loadLock(m_qMutex);
 
+	PRINT_FUNC;
 	m_queue.push(element);
 
 #ifdef QUEUE_DEBUG_DATA
@@ -439,6 +441,9 @@ bool NotificationQueue::feedDataBuffer(const std::string& ruleName,
 				       const std::string& assetName,
 				       ReadingSet* assetData)
 {
+	Logger::getLogger()->info("%s:%d: assetName=%s, assetData->getCount()=%d", 
+								__FUNCTION__, __LINE__, assetName.c_str(), assetData->getCount());
+	
 	vector<Reading *> readings = assetData->getAllReadings();
 	vector<Reading *> newReadings;
 	// Create a ReadingSet deep copy
@@ -577,6 +582,7 @@ bool NotificationQueue::processDataBuffer(map<string, AssetData>& results,
 
 	if (readingsData.size() == 0)
 	{
+		PRINT_FUNC;
 		return false;
 	}
 
@@ -595,6 +601,7 @@ bool NotificationQueue::processDataBuffer(map<string, AssetData>& results,
         }
 #endif
 
+	PRINT_FUNC;
 	// Process all reading data in the buffer
 	return this->processAllReadings(info, readingsData, results);
 }
@@ -608,7 +615,7 @@ bool NotificationQueue::processDataBuffer(map<string, AssetData>& results,
 void NotificationQueue::evalRule(map<string, AssetData>& results,
 				 NotificationRule* rule)
 {
-
+	PRINT_FUNC;
 	// Output data string for MIN/MAX/AVG/ALL DATA
 	map<string, string> JSONOutput;
 	// Points in time data for all SingleItem assets data
@@ -648,6 +655,8 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		}
 	}
 
+	PRINT_FUNC;
+
 	// No SingleItem evaluations found
 	if (!singleItem.size())
 	{
@@ -655,11 +664,13 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 		addReadyData(JSONOutput, evalJSON);
 		evalJSON += " }";
 
+		PRINT_FUNC;
 		// Call plugin_eval, plugin_reason and plugin_deliver
 		deliverNotifications(rule, evalJSON);
 	}
 	else
 	{
+		PRINT_FUNC;
 		// Deliver SingleItem data + ready data
 		deliverData(rule, singleItem, JSONOutput);
 	}
@@ -684,7 +695,7 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
 /**
  * Process all data buffers for a given assetName
  *
- * The assetName might belong to differen rules:
+ * The assetName might belong to different rules:
  *
  * (1) Get all rules for the given asset name
  * (2) For each rule process data for all assets belonging to the rule
@@ -698,6 +709,7 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
  */
 void NotificationQueue::processAllDataBuffers(const string& assetName)
 {
+	PRINT_FUNC;
 	// Get the subscriptions instance
 	NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
 	if (!subscriptions)
@@ -712,11 +724,13 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 	// Get NotificationManager instance
 	NotificationManager* manager = NotificationManager::getInstance();
 
+	PRINT_FUNC;
 	// Iterate trough subscriptions
 	for (auto it = registeredItems.begin();
 		  it != registeredItems.end();
 		  ++it)
 	{
+		PRINT_FUNC;	
 		lock_guard<mutex> guard(manager->m_instancesMutex);
 
 		// Per asset notification map
@@ -727,7 +741,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 
-		// Check wether the instance exists and it is enabled
+		// Check whether the instance exists and it is enabled
 		if (!instance ||
 		    !instance->getRule() ||
 		    !instance->isEnabled())
@@ -750,14 +764,18 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		// Get ruleName for the assetName
 		string ruleName = instance->getRule()->getName();
 
-		// Get all assests belonging to current rule
-		vector<NotificationDetail>& assets = instance->getRule()->getAssets();
+		PRINT_FUNC;
 
-		// Iterate trough assets
+		// Get all assets belonging to current rule
+		vector<NotificationDetail>& assets = instance->getRule()->getAssets();
+		Logger::getLogger()->info("%s:%d: assets.size()=%d", __FUNCTION__, __LINE__, assets.size());
+
+		// Iterate through assets
 		for (auto itr = assets.begin();
 			  itr != assets.end();
 			  ++itr)
 		{
+			PRINT_FUNC;
 			// Process data buffer and fill results
 			this->processDataBuffer(results,
 						ruleName,
@@ -765,11 +783,15 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 						*itr);
 		}
 
+		Logger::getLogger()->info("%s:%d: results.size()=%d, assets.size()=%d, instance->getRule()->evaluateAny()=%s", 
+									__FUNCTION__, __LINE__, results.size(), assets.size(), instance->getRule()->evaluateAny()?"true":"false");
+		
 		// Eval rule? We have all assets data or at least one, given the
 		// rule multiple evaluation value set to MultipleEvaluation::M_ANY
 		if (results.size() == assets.size() ||
 		    (results.size() > 0 && instance->getRule()->evaluateAny()))
 		{
+			PRINT_FUNC;
 			// Notification data ready: eval data and sent notification
 			this->sendNotification(results, *it);
 		}
@@ -795,6 +817,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 					   vector<NotificationDataElement *>& readingsData,
 					   map<string, AssetData>& results)
 {
+	PRINT_FUNC;
 	bool evalRule = false;
 	string assetName = info.getAssetName();
 	string ruleName = info.getRuleName();
@@ -823,10 +846,15 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 	}
 #endif
 
+	PRINT_FUNC;
+	Logger::getLogger()->info("%s:%d: info.getType()=%d, info.getAssetName=%s, info.getRuleName=%s", 
+								__FUNCTION__, __LINE__, info.getType(), info.getAssetName().c_str(), info.getRuleName().c_str());
+
 	switch(info.getType())
 	{
 	case EvaluationType::SingleItem:
 	case EvaluationType::Interval:
+		PRINT_FUNC;
 		results[assetName].type = info.getType();
 		// Add all Reading data
 		this->setSingleItemData(readingsData, results);
@@ -844,6 +872,7 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 		{
 		// Process ALL buffers
 		map<string, string> output;
+		PRINT_FUNC;
 		this->processAllBuffers(readingsData,
 					info.getType(),
 					info.getInterval(),
@@ -929,8 +958,10 @@ bool NotificationQueue::processAllReadings(NotificationDetail& info,
 void NotificationQueue::sendNotification(map<string, AssetData>& results,
 					 SubscriptionElement& subscription)
 {
+	PRINT_FUNC;
 	if (subscription.getInstance())
-	{
+	{	
+		PRINT_FUNC;
 		this->evalRule(results, subscription.getRule());
 	}
 }
@@ -988,6 +1019,7 @@ void NotificationQueue::processAllBuffers(vector<NotificationDataElement *>& rea
 
 		if (((*item)->getTime() - first_time) > timeInterval)
 		{
+			PRINT_FUNC;
 			// Exit from buffers loop
 			evalRule = true;
 			break;
@@ -997,6 +1029,7 @@ void NotificationQueue::processAllBuffers(vector<NotificationDataElement *>& rea
 	// Return notification data
 	if (buffersDone && evalRule)
 	{
+		PRINT_FUNC;
 		// Aggregate data in the buffers and set values in result map
 		aggregateData(readingsData, buffersDone, type, result);
 
@@ -1279,6 +1312,7 @@ static void deliverNotificationsExtra(
 
 		DeliveryPlugin* plugin = delivery.second->getPlugin();
 
+		PRINT_FUNC;
 		sendNotification(delivery.second, plugin, rule, reason);
 	}
 
@@ -1301,6 +1335,7 @@ static void deliverNotificationsExtra(
 static void deliverNotifications(NotificationRule* rule,
 								 const string& data)
 {
+	PRINT_FUNC;
 	// Eval notification data via rule "plugin_eval"
 	bool evalRule = rule->getPlugin()->eval(data);
 
@@ -1330,6 +1365,7 @@ static void deliverNotifications(NotificationRule* rule,
 			DeliveryPlugin* plugin = instance->getDeliveryPlugin();
 			NotificationDelivery*	delivery = instance->getDelivery();
 
+			PRINT_FUNC;
 			sendNotification(delivery, plugin, rule, reason);
 		}
 
@@ -1503,22 +1539,25 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 void NotificationQueue::setSingleItemData(vector<NotificationDataElement *>& readingsData,
 					  map<string, AssetData>& results)
 {
+	PRINT_FUNC;
 	for (auto item = readingsData.begin();
 		  item != readingsData.end();
 		   ++item)
 	{
 		const std::vector<Reading *>& readings = (*item)->getData()->getAllReadings();
+		Logger::getLogger()->info("NotificationQueue::setSingleItemData: readings vector length=%d", readings.size());
 		for (auto r = readings.begin();
 			  r != readings.end();
 			  ++r)
 		{
+			// Logger::getLogger()->info("NotificationQueue::setSingleItemData: (*r)->getAssetName()=%s", (*r)->getAssetName().c_str());
 			results[(*r)->getAssetName()].rData.push_back(*r);
 		}
 	}
 }
 
 /**
- * Build notification JOSN data for time aggregated data
+ * Build notification JSON data for time aggregated data
  *
  * @param    readyData		Input map with ready  time aggregated data
  * @param    output		The output string to pass to plugin_eval
@@ -1638,6 +1677,7 @@ static void deliverData(NotificationRule* rule,
 		// If all assets are available call plugin_eval, plugin_reason and plugin_deliver
 		if (assets.size() == values.size())
 		{
+			PRINT_FUNC;
 			deliverNotifications(rule, output);
 		}
 	}

@@ -136,6 +136,7 @@ void NotificationSubscription::registerSubscriptions()
 		}
 
 		// Create a new subscription
+		m_logger->info("NotificationSubscription::registerSubscriptions(): calling createSubscription()");
 		bool ret = this->createSubscription(instance);
 	}
 	// Unlock instances
@@ -176,8 +177,11 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 	 * We can have different Subscriptions for each asset:
 	 * add new one into the vector
 	 */
+	m_logger->info("NotificationSubscription::addSubscription(): adding SubscriptionElement to m_subscriptions[%s]", assetName.c_str());
 	m_subscriptions[assetName].push_back(element);
-
+	m_logger->info("NotificationSubscription::addSubscription(): AFTER: m_subscriptions.size()=%d, m_subscriptions[%s] has %d elements", 
+						m_subscriptions.size(), assetName.c_str(), m_subscriptions[assetName].size());
+	
 	// Register once per asset Notification interest to Storage server
 	if (m_subscriptions[assetName].size() == 1)
 	{
@@ -358,6 +362,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 						     type);
 
 			// Add assetInfo to its rule
+			Logger::getLogger()->info("Calling theRule->addAsset(assetInfo): rulename=%s, assetname=%s", theRule->getName().c_str(), asset.c_str());
 			theRule->addAsset(assetInfo);
 
 			// Create subscription object
@@ -380,17 +385,21 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
  * @param    ruleName		The associated ruleName
  */
 void NotificationSubscription::removeSubscription(const string& assetName,
-						  const string& ruleName)
+						  const string& ruleName, bool storageServiceRestartPending)
 {
+	PRINT_FUNC;
 	// Get all instances
 	NotificationManager* manager = NotificationManager::getInstance();
-
+	PRINT_FUNC;
 	// Get subscriptions for assetName
 	this->lockSubscriptions();
+	PRINT_FUNC;
 	map<string, vector<SubscriptionElement>>&
 		allSubscriptions = this->getAllSubscriptions();
+	Logger::getLogger()->info("NotificationSubscription::removeSubscription: BEFORE: Number of subscriptions=%d", allSubscriptions.size());
 	auto it = allSubscriptions.find(assetName);
 	bool ret = it != allSubscriptions.end();
+	PRINT_FUNC;
 
 	// For the found assetName subscriptions
 	// 1- Unsubscribe notification interest for assetNamme
@@ -399,12 +408,15 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 	// 4- Remove Subscription
 	if (ret)
 	{
+		PRINT_FUNC;
 		vector<SubscriptionElement>& elems = (*it).second;
 		if (elems.size() == 1)
 		{
+				PRINT_FUNC;
 		        // 1- We have only one subscription for current asset
 		        // call unregister interest
-		        this->unregisterSubscription(assetName);
+		        if (!storageServiceRestartPending)
+			        this->unregisterSubscription(assetName);
 		}
 
 		// Get Notification queue instance
@@ -455,11 +467,66 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 			}
 		}
 
+		Logger::getLogger()->info("NotificationSubscription::removeSubscription: elems.size()=%d", elems.size());
+		
 		// 4- Remove subscription if array is empty
 		if (!elems.size())
 		{
+			PRINT_FUNC;
 			allSubscriptions.erase(it);
 		}
 	}
+	Logger::getLogger()->info("NotificationSubscription::removeSubscription: AFTER: Number of subscriptions=%d", allSubscriptions.size());
 	this->unlockSubscriptions();
+	PRINT_FUNC;
 }
+
+
+/**
+ * Remove a given subscription
+ *
+ * @param    assetName		The register assetName for notifications
+ * @param    ruleName		The associated ruleName
+ */
+void NotificationSubscription::removeAllSubscriptions(bool storageServiceRestartPending)
+{
+	// Get all NotificationSubscriptions
+	m_subscriptionMutex.lock();
+	PRINT_FUNC;
+	// std::map<std::string assetName, std::vector<SubscriptionElement>>
+	auto & subscriptions = this->getAllSubscriptions();
+	PRINT_FUNC;
+	Logger::getLogger()->info("%s:%d: subscriptions.size()=%d", __FUNCTION__, __LINE__, subscriptions.size());
+	PRINT_FUNC;
+	m_subscriptionMutex.unlock();
+	
+	int n=0;
+	for (auto & it : subscriptions)
+	{
+		PRINT_FUNC;
+		std::string assetName = it.first;
+		PRINT_FUNC;
+		auto & seVector = it.second;
+		PRINT_FUNC;
+		Logger::getLogger()->info("%s:%d: assetName=%s, SubscriptionElement vec size=%d", 
+									__FUNCTION__, __LINE__, assetName.c_str(), seVector.size());
+		PRINT_FUNC;
+		for(auto & se : seVector)
+		{
+			PRINT_FUNC;
+			if (!se.getRule())
+				break;
+			Logger::getLogger()->info("SubscriptionElement: assetName=%s, ruleName=%s", 
+										se.getAssetName().c_str(), se.getRule()->getName().c_str());
+			removeSubscription(se.getAssetName(), se.getRule()->getName(), storageServiceRestartPending);
+		}
+		PRINT_FUNC;
+		n++;
+		Logger::getLogger()->info("%s:%d: n=%d, subscriptions.size()=%d", 
+									__FUNCTION__, __LINE__, n, subscriptions.size());
+		if (n >= subscriptions.size())
+			break;
+	}
+	PRINT_FUNC;
+}
+

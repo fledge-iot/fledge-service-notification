@@ -84,7 +84,8 @@ class NotificationSubscription
 		void			lockSubscriptions() { m_subscriptionMutex.lock(); };
 		void			unlockSubscriptions() { m_subscriptionMutex.unlock(); };
 		void			removeSubscription(const string& assetName,
-							   const string& ruleName);
+							   const string& ruleName, bool storageServiceRestartPending=false);
+		void 			removeAllSubscriptions(bool storageServiceRestartPending);
 
 	private:
 		EvaluationType		getEvalType(const Value& value);
