@@ -34,7 +34,8 @@ if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) &&  $os_version == *
 		sudo yum install -y @development
 	else
 		sudo yum groupinstall "Development tools" -y
-		# 	sudo yum install -y centos-release-scl
+		# Commented installation of centos-release-scl because its package is not available for Centos Stream 9
+		# sudo yum install -y centos-release-scl
 	fi
 	sudo yum install -y boost-devel
 	sudo yum install -y glib2-devel
@@ -52,6 +53,7 @@ if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) &&  $os_version == *
 	# the previous gcc will be enabled again after a log-off/log-in.
 	#
 	sudo yum install -y yum-utils
+	# Commented installation of devtoolset-7 and rhel-server-rhscl-7-rpms because they are not available for Centos Stream 9
 	# sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
 	# sudo yum install -y devtoolset-7
 elif apt --version 2>/dev/null; then
