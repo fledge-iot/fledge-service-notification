@@ -290,8 +290,16 @@ bool NotificationService::start(string& coreAddress,
 	// - Notification API listener is already down.
 	// - all subscriptions already unregistered
 
-	// Unregister from storage service
-	m_mgtClient->unregisterService();
+	if (m_restartRequest)
+	{
+		// Request the Fledge core to restart the service
+		m_mgtClient->restartService();
+	}
+	else
+	{
+		// Unregister from Fledge
+		m_mgtClient->unregisterService();
+	}
 
 	// Stop management API
 	m_managementApi->stop();
