@@ -38,6 +38,12 @@ if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) ]]; then
 		if [[ $os_version == *"7"* ]]; 
 		then
 			sudo yum install -y centos-release-scl
+			# A gcc version newer than 4.9.0 is needed to properly use <regex>
+			# the installation of these packages will not overwrite the previous compiler
+			# the new one will be available using the command 'source scl_source enable devtoolset-7'
+			# the previous gcc will be enabled again after a log-off/log-in.
+			sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
+			sudo yum install -y devtoolset-7
 		fi
 	fi
 	sudo yum install -y boost-devel
@@ -49,16 +55,8 @@ if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) ]]; then
 	sudo yum install -y git
 	sudo yum install -y cmake
 	sudo yum install -y libuuid-devel
-
-	# A gcc version newer than 4.9.0 is needed to properly use <regex>
-	# the installation of these packages will not overwrite the previous compiler
-	# the new one will be available using the command 'source scl_source enable devtoolset-7'
-	# the previous gcc will be enabled again after a log-off/log-in.
-	#
 	sudo yum install -y yum-utils
-	# Commented installation of devtoolset-7 and rhel-server-rhscl-7-rpms because they are not available for Centos Stream 9
-	# sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
-	# sudo yum install -y devtoolset-7
+	
 elif apt --version 2>/dev/null; then
 	sudo apt install -y avahi-daemon curl
 	sudo apt install -y cmake g++ make build-essential autoconf automake uuid-dev
