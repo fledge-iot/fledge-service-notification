@@ -23,19 +23,22 @@
 
 set -e
 
-fledge_location=`pwd`
-os_name=`(grep -o '^NAME=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')`
-os_version=`(grep -o '^VERSION_ID=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')`
+fledge_location=$(pwd)
+os_name=$(grep -o '^NAME=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')
+os_version=$(grep -o '^VERSION_ID=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')
 echo "Platform is ${os_name}, Version: ${os_version}"
 
-if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) &&  $os_version == *"9"* ]]; then
+if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) ]]; then
 	if [[ $os_name == *"Red Hat"* ]]; then
 		sudo yum-config-manager --enable 'Red Hat Enterprise Linux Server 7 RHSCL (RPMs)'
 		sudo yum install -y @development
 	else
 		sudo yum groupinstall "Development tools" -y
-		# Commented installation of centos-release-scl because its package is not available for Centos Stream 9
-		# sudo yum install -y centos-release-scl
+		# Install centos-release-scl only if OS is CentOS 7
+		if [[ $os_version == *"7"* ]]; 
+		then
+			sudo yum install -y centos-release-scl
+		fi
 	fi
 	sudo yum install -y boost-devel
 	sudo yum install -y glib2-devel
