@@ -35,7 +35,7 @@ class NotificationService : public ServiceAuthHandler
 		const std::string&	getName() { return m_name; };
 		bool 			start(std::string& coreAddress,
 					      unsigned short corePort);
-		void 			stop();
+		void 			stop(bool remvoeFromCore=true);
 		void			shutdown();
 		void			restart();
 		bool			isRunning() { return !m_shutdown; };
@@ -74,5 +74,6 @@ class NotificationService : public ServiceAuthHandler
 		const std::string	m_token;
 		bool			m_dryRun;
 		bool			m_restartRequest;
+		bool			m_removeFromCore;
 };
 #endif

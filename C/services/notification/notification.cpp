@@ -49,7 +49,7 @@ static void signalHandler(int signal)
 		// Call stop() method in notification service class
 		if (signal == SIGTERM)
 		{
-			service->restart();
+			service->stop(false);
 		}
 		else
 		{

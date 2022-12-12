@@ -40,7 +40,8 @@ NotificationService::NotificationService(const string& myName,
 					 m_shutdown(false),
 					 m_token(token),
 					 m_dryRun(false),
-					 m_restartRequest(false)
+					 m_restartRequest(false),
+					 m_removeFromCore(true)
 {
 	// Set name
 	m_name = myName;
@@ -295,7 +296,7 @@ bool NotificationService::start(string& coreAddress,
 		// Request the Fledge core to restart the service
 		m_mgtClient->restartService();
 	}
-	else
+	else if (m_removeFromCore)
 	{
 		// Unregister from Fledge
 		m_mgtClient->unregisterService();
@@ -321,10 +322,14 @@ bool NotificationService::start(string& coreAddress,
  * Unregister notification subscriptions and
  * stop NotificationAPi listener
  */
-void NotificationService::stop()
+void NotificationService::stop(bool remvoeFromCore)
 {
 	m_logger->info("Stopping Notification service '" + m_name + "' ...");
 
+	if (remvoeFromCore == false)
+	{
+		m_removeFromCore = false;
+	}
 	// Unregister notifications to storage service
 	NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
 	if (subscriptions)
