@@ -322,11 +322,11 @@ bool NotificationService::start(string& coreAddress,
  * Unregister notification subscriptions and
  * stop NotificationAPi listener
  */
-void NotificationService::stop(bool remvoeFromCore)
+void NotificationService::stop(bool removeFromCore)
 {
 	m_logger->info("Stopping Notification service '" + m_name + "' ...");
 
-	if (remvoeFromCore == false)
+	if (removeFromCore == false)
 	{
 		m_removeFromCore = false;
 	}
