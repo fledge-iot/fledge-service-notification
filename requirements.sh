@@ -23,18 +23,28 @@
 
 set -e
 
-fledge_location=`pwd`
-os_name=`(grep -o '^NAME=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')`
-os_version=`(grep -o '^VERSION_ID=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')`
+fledge_location=$(pwd)
+os_name=$(grep -o '^NAME=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')
+os_version=$(grep -o '^VERSION_ID=.*' /etc/os-release | cut -f2 -d\" | sed 's/"//g')
 echo "Platform is ${os_name}, Version: ${os_version}"
 
-if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) &&  $os_version == *"7"* ]]; then
+if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) ]]; then
 	if [[ $os_name == *"Red Hat"* ]]; then
 		sudo yum-config-manager --enable 'Red Hat Enterprise Linux Server 7 RHSCL (RPMs)'
 		sudo yum install -y @development
 	else
 		sudo yum groupinstall "Development tools" -y
-		sudo yum install -y centos-release-scl
+		# Install centos-release-scl only if OS is CentOS 7
+		if [[ $os_version == *"7"* ]]; 
+		then
+			sudo yum install -y centos-release-scl
+			# A gcc version newer than 4.9.0 is needed to properly use <regex>
+			# the installation of these packages will not overwrite the previous compiler
+			# the new one will be available using the command 'source scl_source enable devtoolset-7'
+			# the previous gcc will be enabled again after a log-off/log-in.
+			sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
+			sudo yum install -y devtoolset-7
+		fi
 	fi
 	sudo yum install -y boost-devel
 	sudo yum install -y glib2-devel
@@ -45,15 +55,8 @@ if [[ ( $os_name == *"Red Hat"* || $os_name == *"CentOS"* ) &&  $os_version == *
 	sudo yum install -y git
 	sudo yum install -y cmake
 	sudo yum install -y libuuid-devel
-
-	# A gcc version newer than 4.9.0 is needed to properly use <regex>
-	# the installation of these packages will not overwrite the previous compiler
-	# the new one will be available using the command 'source scl_source enable devtoolset-7'
-	# the previous gcc will be enabled again after a log-off/log-in.
-	#
 	sudo yum install -y yum-utils
-	sudo yum-config-manager --enable rhel-server-rhscl-7-rpms
-	sudo yum install -y devtoolset-7
+	
 elif apt --version 2>/dev/null; then
 	sudo apt install -y avahi-daemon curl
 	sudo apt install -y cmake g++ make build-essential autoconf automake uuid-dev
