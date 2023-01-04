@@ -47,7 +47,14 @@ static void signalHandler(int signal)
 	if (service)
 	{
 		// Call stop() method in notification service class
-		service->stop();
+		if (signal == SIGTERM)
+		{
+			service->stop(false);
+		}
+		else
+		{
+			service->stop();
+		}
 	}
 }
 
