@@ -21,6 +21,7 @@
 #include <string.h>
 #include "plugin_api.h"
 #include <threshold_rule.h>
+#include <data_availability_rule.h>
 #include <notification_subscription.h>
 #include <notification_queue.h>
 #include <reading.h>
@@ -308,6 +309,9 @@ NotificationManager::NotificationManager(const std::string& serviceName,
 	 * Add here all the builtin rules we want to make available:
 	 */
 	this->registerBuiltinRule<ThresholdRule>("Threshold");
+
+	//Comment this line until all the dependencies are in place
+	//this->registerBuiltinRule<DataAvailabilityRule>("DataAvailability");
 
 	// Register statistics
 	ManagementApi *management = ManagementApi::getInstance();

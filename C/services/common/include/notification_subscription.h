@@ -79,7 +79,14 @@ class NotificationSubscription
 		};
 		bool 			addSubscription(const std::string& assetName,
 							SubscriptionElement& element);
+		bool 			addSubscription(const std::string& assetName,
+							SubscriptionElement& element,
+							const std::string& tableName,
+							const std::string& key,
+							const std::string& operation,
+							std::vector<std::string>& keyValues);
 		void			unregisterSubscription(const std::string& assetName);
+		void			unregisterSubscription(const string& assetName,const string& tableName,const string& key,std::vector<std::string> keyValues,const string& operation);  
 		bool			createSubscription(NotificationInstance* instance);
 		void			lockSubscriptions() { m_subscriptionMutex.lock(); };
 		void			unlockSubscriptions() { m_subscriptionMutex.unlock(); };

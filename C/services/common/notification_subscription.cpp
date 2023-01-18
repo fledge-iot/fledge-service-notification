@@ -196,6 +196,66 @@ bool NotificationSubscription::addSubscription(const std::string& assetName,
 }
 
 /**
+ * Add a subscription object to Subscriptions
+ * and register the Reading asset notification to storage service.
+ *
+ * Different subscription objects can be added to
+ * to existing ones per assetName. 
+ *
+ * @param    assetName		The assetName to register for notifications
+ * @param    element		The Subscription object to add to current subscriptions.
+ * @param    tableName		The tableName to subscribe
+ * @param    key			Key for table
+ * @param    operation		Operation to look for 
+ * @param    keyValues		keyValues for 
+ * @return			True on succes, false otherwise.
+ */
+bool NotificationSubscription::addSubscription(
+	const std::string& assetName,
+	SubscriptionElement& element, 
+	const std::string& tableName, 
+	const std::string& key,
+	const std::string& operation, 
+	std::vector<std::string>& keyValues)
+{
+
+	// Get NotificationAPI instance
+	NotificationApi* api = NotificationApi::getInstance();
+	// Get callback URL
+	string callBackURL = api->getCallBackURL();
+
+	if (callBackURL.empty())
+	{
+		m_logger->fatal(" Error while registering table '" + \
+				tableName + "' for notification " + \
+				element.getNotificationName() + \
+				" callback URL is not set");
+		return false;
+	}
+
+	/**
+	 * We can have different Subscriptions for each asset:
+	 * add new one into the vector
+	 */
+	m_subscriptions[assetName].push_back(element);
+
+	// Register once per asset Notification interest to Storage server
+	if (m_subscriptions[assetName].size() == 1)
+	{
+		std::string operation = "insert";
+		m_storage.registerTableNotification(tableName, key, keyValues, operation, (callBackURL + urlEncode(assetName)));
+
+		m_logger->info("Registering key '" + \
+			       assetName + "' for notification " + \
+			       element.getNotificationName());
+	}
+
+	m_logger->info("Subscription for key '" + assetName + \
+		       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules");
+
+	return true;
+}
+/**
  * Check for notification evaluation type in the input JSON object
  *
  * @param    value	The input JSON object 
@@ -263,6 +323,40 @@ void NotificationSubscription::unregisterSubscription(const string& assetName)
 }
 
 /**
+ * Unregister a single subscription from storage layer
+ *
+ * The caller of this routine must hold the subscriptions lock
+ *
+ * @param    assetName		The asset name to unregister
+ * @param    tableName		The tableName name to unregister
+ * @param    key			The key name to unregister
+ * @param    keyValues		The keyValues name to unregister
+ * @param    operation		The operation (insert/update/delete)
+ */													 
+void NotificationSubscription::unregisterSubscription(const string& assetName,const string& tableName,const string& key,std::vector<std::string> keyValues,const string& operation)
+{
+
+	// Get NotificationAPI instance
+	NotificationApi* api = NotificationApi::getInstance();
+	// Get callback URL
+	string callBackURL = api->getCallBackURL();
+
+	// Get all NotificationSubscriptions
+	std:map<std::string, std::vector<SubscriptionElement>>&
+		subscriptions = this->getAllSubscriptions();
+	auto it = subscriptions.find(assetName);
+
+	if (it != subscriptions.end())
+	{
+		// Unregister interest
+		m_storage.unregisterTableNotification(tableName,key,keyValues,operation, callBackURL + urlEncode(assetName));
+
+		m_logger->info("Unregistering asset '" + \
+				assetName + "' for notification " + \
+				this->getNotificationName());
+	}
+}
+/**
  * Create a SubscriptionElement object and register interest for asset names
  *
  * @param    instance		The notification instance
@@ -274,6 +368,12 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 	bool ret = false;
 	// Get RulePlugin
 	RulePlugin* rulePluginInstance = instance->getRulePlugin();
+	
+	bool registerTableNotification = false;
+	if (rulePluginInstance->getName() == "DataAvailability") 
+	{
+		registerTableNotification = true;
+	}
 	// Get DeliveryPlugin
 	DeliveryPlugin* deliveryPluginInstance = instance->getDeliveryPlugin();
 
@@ -367,7 +467,23 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 
 			// Add subscription and register asset interest
 			lock_guard<mutex> guard(m_subscriptionMutex);
-			ret = this->addSubscription(asset, subscription);
+			if (registerTableNotification)
+			{
+				string tableName = "log";
+				string key = "code";
+				if (asset == "ALL") 
+				{
+					key.clear();
+				}
+				string operation = "insert";
+				vector<std::string> keyValues;
+				keyValues.push_back(asset);
+				ret = this->addSubscription(asset,subscription,tableName,key,operation,keyValues);
+			}
+			else
+			{
+				ret = this->addSubscription(asset, subscription);
+			}
 		}
 	}
 	return ret;
@@ -391,7 +507,8 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 		allSubscriptions = this->getAllSubscriptions();
 	auto it = allSubscriptions.find(assetName);
 	bool ret = it != allSubscriptions.end();
-
+	bool unregisterTableNotification = false;
+	
 	// For the found assetName subscriptions
 	// 1- Unsubscribe notification interest for assetNamme
 	// 2- Remove data in buffer[ruleName][assetName]
@@ -404,7 +521,34 @@ void NotificationSubscription::removeSubscription(const string& assetName,
 		{
 		        // 1- We have only one subscription for current asset
 		        // call unregister interest
-		        this->unregisterSubscription(assetName);
+				NotificationInstance* instance = elems[0].getInstance();
+				// Get RulePlugin
+				RulePlugin* rulePluginInstance = instance->getRulePlugin();
+				
+				
+				if (rulePluginInstance->getName() == "DataAvailability") 
+				{
+					unregisterTableNotification = true;
+				}
+
+				if (unregisterTableNotification)
+				{
+					string tableName = "log";
+					string key = "code";
+					if (assetName == "ALL") 
+					{
+						key.clear();
+					}
+					string operation = "insert";
+					vector<std::string> keyValues;
+					keyValues.push_back(assetName);
+					this->unregisterSubscription(assetName,tableName,key,keyValues,operation);
+				}
+				else
+				{
+					this->unregisterSubscription(assetName);
+				}
+		        
 		}
 
 		// Get Notification queue instance
