@@ -1393,7 +1393,13 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 			// Check and set registerIngest
 			if (deliver->ingestData())
 			{
+				
 				deliver->registerIngest((void *)ingestCB, (void *)m_service);
+				
+				// Create AssetTracker instance to be used by delivery plugin in case a new asset in created
+				m_assetTracker = new AssetTracker(m_managerClient, notificationName);
+				m_assetTracker->populateAssetTrackingCache( notificationName, "Notify");
+				
 			}
 
 			// Check and set the NotificationService class

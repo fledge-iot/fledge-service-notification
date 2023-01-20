@@ -16,6 +16,7 @@
 #include <delivery_plugin.h>
 #include <notification_service.h>
 #include <notification_stats.h>
+#include <asset_tracking.h>
 
 // Notification type repeat time
 #define DEFAULT_RETRIGGER_TIME 60
@@ -342,5 +343,6 @@ class NotificationManager
 		NotificationService*	m_service;
 		Logger*			m_logger;
 		NotificationStats	m_stats;
+		AssetTracker*	m_assetTracker;
 };
 #endif

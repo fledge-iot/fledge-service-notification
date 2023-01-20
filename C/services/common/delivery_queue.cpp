@@ -439,6 +439,33 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 					   elem->getData()->getNotificationName(),
 					   elem->getData()->getReason(),
 					   elem->getData()->getMessage());
+
+		// Add Asset tracking 
+		if (elem->getPlugin()->ingestData())
+		{
+			AssetTracker *instance =  nullptr;
+			instance = AssetTracker::getAssetTracker();
+			if (instance != nullptr)
+			{	
+				DeliveryDataElement* deliveryData = elem->getData();
+				const std::string service = deliveryData->getNotificationName(); // Notification Service Instance
+				const std::string plugin = elem->getPlugin()->getName(); // Delivery Plugin Name
+				const std::string asset = elem->getPlugin()->getAssetName();
+				const std::string event = "Notify";
+				const bool deprecated = false;
+				
+				AssetTrackingTuple tuple = AssetTrackingTuple(service,plugin,asset,event,deprecated);
+				if (instance->checkAssetTrackingCache(tuple) == false)
+				{
+					m_logger->debug("Adding AssetTracker tuple for Notificatiion %s: %s:Ingest, deprecated state is %d",service.c_str(),asset.c_str(),(deprecated ? 1:0));
+					instance->addAssetTrackingTuple(tuple);
+				}
+				
+			}
+			
+			
+		}
+				   
 	}
 #ifdef DEBUG_DELIVERY_QUEUE
 	else

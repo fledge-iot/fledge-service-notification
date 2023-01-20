@@ -60,6 +60,7 @@ PLUGIN_HANDLE DeliveryPlugin::init(const ConfigCategory& config)
 	m_instance = this->pluginInit(&config);
 	// Set the enable flag
 	this->setEnabled(config);
+	m_assetName = config.getValue("asset");
 	// Return instance
 	return (m_instance ? &m_instance : NULL);
 }
@@ -137,7 +138,7 @@ void DeliveryPlugin::reconfigure(const string& newConfig)
 	{
 		ConfigCategory reconfig("new_cfg", newConfig);
 		this->setEnabled(reconfig);
-
+		m_assetName = reconfig.getValue("asset");
 		return this->pluginReconfigurePtr(m_instance, newConfig);
 	}
 }

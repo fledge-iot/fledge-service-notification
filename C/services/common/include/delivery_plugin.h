@@ -23,6 +23,7 @@ class DeliveryPlugin : public Plugin
 	        ~DeliveryPlugin();
 
 		const std::string	getName() const { return m_name; };
+		const std::string	getAssetName() const { return m_assetName; };
 		PLUGIN_HANDLE		init(const ConfigCategory& config);
 		void			shutdown();
 		bool			persistData() { return info->options & SP_PERSIST_DATA; };
@@ -61,6 +62,7 @@ class DeliveryPlugin : public Plugin
 
 	private:
 		std::string     	m_name;
+		std::string     	m_assetName;
 		PLUGIN_HANDLE   	m_instance;
 		std::mutex		m_configMutex;
 		bool			m_enabled;
