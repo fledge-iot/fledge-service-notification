@@ -448,16 +448,16 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 			if (instance != nullptr)
 			{	
 				DeliveryDataElement* deliveryData = elem->getData();
-				const std::string service = deliveryData->getNotificationName(); // Notification Service Instance
+				const std::string serviceInstance = deliveryData->getNotificationName(); // Notification Service Instance
 				const std::string plugin = elem->getPlugin()->getName(); // Delivery Plugin Name
 				const std::string asset = elem->getPlugin()->getAssetName();
 				const std::string event = "Notify";
 				const bool deprecated = false;
 				
-				AssetTrackingTuple tuple = AssetTrackingTuple(service,plugin,asset,event,deprecated);
+				AssetTrackingTuple tuple = AssetTrackingTuple(serviceInstance,plugin,asset,event,deprecated);
 				if (instance->checkAssetTrackingCache(tuple) == false)
 				{
-					m_logger->debug("Adding AssetTracker tuple for Notificatiion %s: %s:Ingest, deprecated state is %d",service.c_str(),asset.c_str(),(deprecated ? 1:0));
+					m_logger->debug("Adding AssetTracker tuple for Notificatiion %s: %s:Ingest, deprecated state is %d",serviceInstance.c_str(),asset.c_str(),(deprecated ? 1:0));
 					instance->addAssetTrackingTuple(tuple);
 				}
 				
