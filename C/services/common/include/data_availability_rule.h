@@ -30,17 +30,17 @@ public:
 	DataAvailabilityRule(const std::string &name);
 	~DataAvailabilityRule();
 
-	PLUGIN_HANDLE init(const ConfigCategory &config);
-	void shutdown();
-	bool persistData() { return info->options & SP_PERSIST_DATA; };
-	std::string triggers();
-	bool eval(const std::string &assetValues);
-	std::string reason() const;
+	PLUGIN_HANDLE	init(const ConfigCategory &config);
+	void		shutdown();
+	bool		persistData() { return info->options & SP_PERSIST_DATA; };
+	std::string	triggers();
+	bool		eval(const std::string &assetValues);
+	std::string	reason() const;
 	PLUGIN_INFORMATION *getInfo();
-	bool isBuiltin() const { return true; };
-	void configure(const ConfigCategory &config);
-	void reconfigure(const std::string &newConfig);
-	bool evalAuditCode(const std::string &auditCodeValue,RuleTrigger *rule);
+	bool		isBuiltin() const { return true; };
+	void		configure(const ConfigCategory &config);
+	void		reconfigure(const std::string &newConfig);
+	bool		evalAuditCode(const std::string &auditCodeValue,RuleTrigger *rule);
 
 private:
 	DataAvailabilityCondition m_condition;

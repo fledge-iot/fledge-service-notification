@@ -310,8 +310,7 @@ NotificationManager::NotificationManager(const std::string& serviceName,
 	 */
 	this->registerBuiltinRule<ThresholdRule>("Threshold");
 
-	//Comment this line until all the dependencies are in place
-	//this->registerBuiltinRule<DataAvailabilityRule>("DataAvailability");
+	this->registerBuiltinRule<DataAvailabilityRule>("DataAvailability");
 
 	// Register statistics
 	ManagementApi *management = ManagementApi::getInstance();

@@ -41,11 +41,20 @@ static const char *default_config = QUOTE({
 		"order" : "1"
 	},
 	"auditCode" : {
-		"description" : "Comma separated list of audit log codes (e.g. CONCH,CONAD)",
+		"description" : "Audit log code to monitor, Leave blank if not required or set to * for all codes",
 		"type" : "string",
-		"default" : "ALL",
-		"displayName" : "Codes",
-		"order" : "2"
+		"default" : "",
+		"displayName" : "Audit Code",
+		"order" : "2",
+		"validity" : "assetCode != \"\""
+	},
+	"assetCode" : {
+		"description" : "Asset code to monitor. Leave blank if not required or set to * for all codes",
+		"type" : "string",
+		"default" : "",
+		"displayName" : "Asset Code",
+		"order" : "3",
+		"validity" : "auditCode != \"\""
 	}
 });
 
@@ -337,6 +346,31 @@ void DataAvailabilityRule::configure(const ConfigCategory &config)
 	{
 		DatapointValue value (auditCodeList[i]);
 		handle->addTrigger(auditCodeList[i], new RuleTrigger(auditCodeList[i], new Datapoint(auditCodeList[i], value)));
+	}
+
+	string assetCode = config.getValue("assetCode");
+	
+	
+	j = assetCode.find(filter);
+	vector<std::string> assetCodeList;
+	if (j == string::npos && assetCode.length() > 0)
+	{
+		assetCodeList.push_back(assetCode);
+	}
+	while (j != string::npos) 
+	{
+		assetCodeList.push_back(assetCode.substr(i, j-i));
+		i = ++j;
+		j = assetCode.find(filter, j);
+
+		if (j == string::npos)
+			assetCodeList.push_back(assetCode.substr(i, assetCode.length()));
+	}
+
+	for (int i = 0; i < assetCodeList.size(); ++i)
+	{
+		DatapointValue value (assetCodeList[i]);
+		handle->addTrigger(assetCodeList[i], new RuleTrigger(assetCodeList[i], new Datapoint(assetCodeList[i], value)));
 	}
 	
 	string condition = config.getValue("condition");
