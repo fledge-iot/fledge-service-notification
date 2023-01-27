@@ -40,7 +40,7 @@ static const char *default_config = QUOTE({
 		"order" : "2"
 	},
 	"assetCode" : {
-		"description" : "Asset code to monitor. Leave blank if not required or set to * for all codes",
+		"description" : "Asset code to monitor. Leave blank if not required",
 		"type" : "string",
 		"default" : "",
 		"displayName" : "Asset Code",
