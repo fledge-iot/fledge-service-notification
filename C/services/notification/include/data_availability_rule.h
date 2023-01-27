@@ -15,12 +15,6 @@
 #include <rule_plugin.h>
 #include <builtin_rule.h>
 
-typedef enum
-{
-	AUDIT_CODE_ALL,
-	AUDIT_CODE_IN
-} DataAvailabilityCondition;
-
 /**
  * ThresholdRule, derived from RulePlugin, is a builtin rule object
  */
@@ -43,7 +37,8 @@ public:
 	bool		evalAuditCode(const std::string &auditCodeValue,RuleTrigger *rule);
 
 private:
-	DataAvailabilityCondition m_condition;
+	std::vector<std::string>	m_assetCodeList;
+	std::vector<std::string>	m_auditCodeList;
 };
 
 #endif

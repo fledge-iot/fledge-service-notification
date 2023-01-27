@@ -197,10 +197,11 @@ bool NotificationSubscription::addSubscription(const SubscriptionElement& elemen
 	NotificationApi* api = NotificationApi::getInstance();
 	// Get callback URL
 	string callBackURL = api->getCallBackURL();
+	string auditCallbackURL = api->getAuditCallbackURL();
 
 	if (callBackURL.empty())
 	{
-		m_logger->fatal("Unable to add subscription for notification, URL is empty");
+		m_logger->error("Unable to add subscription for notification, URL is empty");
 		return false;
 	}
 
@@ -246,7 +247,7 @@ bool NotificationSubscription::addSubscription(const SubscriptionElement& elemen
 			string key = "code";
 			vector<string> keyValues;
 			keyValues.push_back(code);
-			m_storage.registerTableNotification(tableName, key, keyValues, operation, (callBackURL + urlEncode(code)));
+			m_storage.registerTableNotification(tableName, key, keyValues, operation, (auditCallbackURL + urlEncode(code)));
 
 			m_logger->info("Registering key '" + \
 				       code + "' for notification " + \
