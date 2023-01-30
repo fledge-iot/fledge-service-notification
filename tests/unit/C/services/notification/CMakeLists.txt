@@ -47,7 +47,18 @@ if(APPLE)
 endif()
 
 # Find source files
-file(GLOB SOURCES ../../../../../C/services/common/*.cpp)
+set(SOURCES
+	../../../../../C/services/notification/data_availability_rule.cpp
+	../../../../../C/services/notification/delivery_plugin.cpp
+	../../../../../C/services/notification/delivery_queue.cpp
+	../../../../../C/services/notification/notification_api.cpp
+	../../../../../C/services/notification/notification_manager.cpp
+	../../../../../C/services/notification/notification_queue.cpp
+	../../../../../C/services/notification/notification_service.cpp
+	../../../../../C/services/notification/notification_subscription.cpp
+	../../../../../C/services/notification/rule_plugin.cpp
+	../../../../../C/services/notification/threshold_rule.cpp
+	)
 file(GLOB unittests "*.cpp")
 
 # Find Fledge includes and libs, by including FindFledge.cmak file
@@ -65,7 +76,7 @@ endif()
 # On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set 
 
 # Add includes
-include_directories(../../../../../C/services/common/include)
+include_directories(../../../../../C/services/notification/include)
 
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})

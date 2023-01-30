@@ -15,12 +15,6 @@
 #include <rule_plugin.h>
 #include <builtin_rule.h>
 
-typedef enum
-{
-	AUDIT_CODE_ALL,
-	AUDIT_CODE_IN
-} DataAvailabilityCondition;
-
 /**
  * ThresholdRule, derived from RulePlugin, is a builtin rule object
  */
@@ -30,20 +24,21 @@ public:
 	DataAvailabilityRule(const std::string &name);
 	~DataAvailabilityRule();
 
-	PLUGIN_HANDLE init(const ConfigCategory &config);
-	void shutdown();
-	bool persistData() { return info->options & SP_PERSIST_DATA; };
-	std::string triggers();
-	bool eval(const std::string &assetValues);
-	std::string reason() const;
+	PLUGIN_HANDLE	init(const ConfigCategory &config);
+	void		shutdown();
+	bool		persistData() { return info->options & SP_PERSIST_DATA; };
+	std::string	triggers();
+	bool		eval(const std::string &assetValues);
+	std::string	reason() const;
 	PLUGIN_INFORMATION *getInfo();
-	bool isBuiltin() const { return true; };
-	void configure(const ConfigCategory &config);
-	void reconfigure(const std::string &newConfig);
-	bool evalAuditCode(const std::string &auditCodeValue,RuleTrigger *rule);
+	bool		isBuiltin() const { return true; };
+	void		configure(const ConfigCategory &config);
+	void		reconfigure(const std::string &newConfig);
+	bool		evalAuditCode(const std::string &auditCodeValue,RuleTrigger *rule);
 
 private:
-	DataAvailabilityCondition m_condition;
+	std::vector<std::string>	m_assetCodeList;
+	std::vector<std::string>	m_auditCodeList;
 };
 
 #endif
