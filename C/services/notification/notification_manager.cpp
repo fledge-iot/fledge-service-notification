@@ -30,10 +30,17 @@
 
 using namespace std;
 
-extern "C" {
-void ingestCB(NotificationService *service, Reading *reading)
+struct AssetTrackInfo
 {
-	service->ingestReading(*reading);
+	NotificationService* service;
+	std::string notificationInstanceName;
+	std::string pluginName;
+};
+
+extern "C" {
+void ingestCB(AssetTrackInfo *info, Reading *reading)
+{
+	info->service->ingestReading(*reading,info->notificationInstanceName.c_str(),info->pluginName.c_str());
 }
 NotificationService *getService(NotificationService *service)
 {
@@ -1393,11 +1400,21 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 			if (deliver->ingestData())
 			{
 				
-				deliver->registerIngest((void *)ingestCB, (void *)m_service);
+				AssetTrackInfo* trakeringInfo = new AssetTrackInfo;
+				trakeringInfo->service = m_service;
+				trakeringInfo->notificationInstanceName = notificationName;
+				trakeringInfo->pluginName = deliver->getName();
+				std::vector<AssetTrackingTuple*>& vec = m_managerClient->getAssetTrackingTuples(notificationName);
 				
-				// Create AssetTracker instance to be used by delivery plugin in case a new asset in created
-				m_assetTracker = new AssetTracker(m_managerClient, notificationName);
-				m_assetTracker->populateAssetTrackingCache( notificationName, "Notify");
+				for (AssetTrackingTuple* &rec : vec)
+				{
+					if (rec->m_eventName == "Notify")
+					{
+						m_service->updateAssetTrackerCache(*rec);
+					}
+				}
+				deliver->registerIngest((void *)ingestCB, (void *) trakeringInfo);
+				
 				
 			}
 

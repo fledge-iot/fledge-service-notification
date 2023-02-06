@@ -16,6 +16,9 @@
 #include <notification_api.h>
 #include <reading.h>
 #include <storage_client.h>
+#include <logger.h>
+#include <asset_tracking.h>
+#include <unordered_set>
 
 #define CATEGORY_DELIVERY_PREFIX "delivery"
 #define CATEGORY_DELIVERY_EXTRA  "_channel_"
@@ -49,10 +52,32 @@ class NotificationService : public ServiceAuthHandler
 
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);
+		void   			updateAssetTrackerCache(AssetTrackingTuple tuple)
+						{
+							std::string track = tuple.m_assetName + tuple.m_eventName + tuple.m_serviceName + tuple.m_pluginName;
+							m_AssetTrackerCache.insert(track);
+						}
 
-		void			ingestReading(Reading& reading)
+		void			ingestReading(Reading& reading, const std::string& notificationInstanceName, const std::string& notificationDeliveryPluginName)
 					{
 						m_storage->readingAppend(reading);
+						//Do Asset Tracking
+						const std::string serviceInstance = notificationInstanceName; // Notification Service Instance
+						const std::string plugin = notificationDeliveryPluginName; // Delivery Plugin Name
+						const std::string asset = reading.getAssetName();
+						const std::string event = "Notify";
+						const bool deprecated = false;
+						
+						AssetTrackingTuple tuple (serviceInstance,plugin,asset,event,deprecated);
+						std::string track = asset + event + serviceInstance + plugin;
+						
+						if (m_AssetTrackerCache.find(track) == m_AssetTrackerCache.end())
+						{
+							m_logger->debug("Adding AssetTracker tuple for Notificatiion %s: %s:Ingest, deprecated state is %d",serviceInstance.c_str(),asset.c_str(),(deprecated ? 1:0));
+							m_assetTracker->addAssetTrackingTuple(tuple);
+							m_AssetTrackerCache.insert(track);
+						}
+
 					};
 		StorageClient*		getStorageClient() { return m_storage; };
 		void			setDryRun() { m_dryRun = true; };
@@ -72,8 +97,12 @@ class NotificationService : public ServiceAuthHandler
 
 		unsigned long		m_delivery_threads;
 		const std::string	m_token;
+		std::string			m_notificationInstanceName;;
+		std::string			m_notificationDeliveryPluginName;;
 		bool			m_dryRun;
 		bool			m_restartRequest;
 		bool			m_removeFromCore;
+		AssetTracker*	m_assetTracker;
+		std::unordered_set<std::string> m_AssetTrackerCache;
 };
 #endif

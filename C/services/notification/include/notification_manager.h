@@ -346,6 +346,5 @@ class NotificationManager
 		NotificationService*	m_service;
 		Logger*			m_logger;
 		NotificationStats	m_stats;
-		AssetTracker*	m_assetTracker;
 };
 #endif
