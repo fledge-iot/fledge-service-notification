@@ -130,18 +130,21 @@ class NotificationRule : public NotificationElement
 					getAssets() { return m_assets; };
 		// Add an asset name
 		void			addAsset(NotificationDetail& info)
-		{
-			m_assets.push_back(info);
-		};
+					{
+						m_assets.push_back(info);
+					};
 		std::string		toJSON();
 		bool			isTimeBased() { return m_timeBased != 0; };
-		void			setTimeBased(uint64_t timeBased) {
+		void			setTimeBased(uint64_t timeBased) 
+					{
 						m_timeBased = timeBased;
-		};
-		bool			evaluateAny() {
+					};
+		bool			evaluateAny()
+					{
 						return m_multiple_evaluaion == MULTIPLE_EVALUATION::M_ANY;
 					};
-		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval) {
+		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval)
+					{
 						m_multiple_evaluaion = eval;
 					};
 

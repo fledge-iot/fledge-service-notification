@@ -22,34 +22,69 @@
 class SubscriptionElement
 {
 	public:
-		SubscriptionElement(const std::string& assetName,
+		SubscriptionElement(const std::string& notificationName,
+				    NotificationInstance* notification);
+
+		virtual ~SubscriptionElement();
+
+		const std::string&	getNotificationName() const { return m_name; };
+		NotificationRule*	getRule()
+					{
+						if (m_notification)
+							return m_notification->getRule();
+						else
+							return NULL;
+					};
+		NotificationDelivery*	getDelivery()
+					{
+						if (m_notification)
+							return m_notification->getDelivery();
+						else
+							return NULL;
+					};
+		NotificationInstance*	getInstance() { return m_notification; };
+
+	protected:
+		std::string		m_name;
+		NotificationInstance*	m_notification;
+};
+
+/**
+ * The SubscriptionElement class handles the notification registration to
+ * storage server based on asset name and its notification name.
+ */
+class AssetSubscriptionElement : public SubscriptionElement
+{
+	public:
+		AssetSubscriptionElement(const std::string& assetName,
 				    const std::string& notificationName,
 				    NotificationInstance* notification);
 
-		~SubscriptionElement();
+		~AssetSubscriptionElement();
 
-		const std::string&	getAssetName() const { return m_asset; };
-		const std::string&	getNotificationName() const { return m_name; };
-		NotificationRule*	getRule()
-		{
-			if (m_notification)
-				return m_notification->getRule();
-			else
-				return NULL;
-		};
-		NotificationDelivery*	getDelivery()
-		{
-			if (m_notification)
-				return m_notification->getDelivery();
-			else
-				return NULL;
-		};
-		NotificationInstance*	getInstance() { return m_notification; };
+		std::string	getAssetName() const { return m_asset; };
 
 	private:
 		std::string	m_asset;
-		std::string	m_name;
-		NotificationInstance*	m_notification;
+};
+
+/**
+ * The SubscriptionElement class handles the notification registration to
+ * storage server based on audit code and its notification name.
+ */
+class AuditSubscriptionElement : public SubscriptionElement
+{
+	public:
+		AuditSubscriptionElement(const std::string& code,
+				    const std::string& notificationName,
+				    NotificationInstance* notification);
+
+		~AuditSubscriptionElement();
+
+		std::string	getAuditCode() const { return m_code; };
+
+	private:
+		std::string	m_code;
 };
 
 /**
@@ -74,19 +109,11 @@ class NotificationSubscription
 					getAllSubscriptions() { return m_subscriptions; };
 		std::vector<SubscriptionElement>&
 					getSubscription(const std::string& assetName)
-		{
-			return m_subscriptions[assetName];
-		};
-		bool 			addSubscription(const std::string& assetName,
-							SubscriptionElement& element);
-		bool 			addSubscription(const std::string& assetName,
-							SubscriptionElement& element,
-							const std::string& tableName,
-							const std::string& key,
-							const std::string& operation,
-							std::vector<std::string>& keyValues);
-		void			unregisterSubscription(const std::string& assetName);
-		void			unregisterSubscription(const string& assetName,const string& tableName,const string& key,std::vector<std::string> keyValues,const string& operation);  
+					{
+						return m_subscriptions[assetName];
+					};
+		bool 			addSubscription(const SubscriptionElement& element);
+		void			unregisterSubscription(const SubscriptionElement& element);
 		bool			createSubscription(NotificationInstance* instance);
 		void			lockSubscriptions() { m_subscriptionMutex.lock(); };
 		void			unlockSubscriptions() { m_subscriptionMutex.unlock(); };

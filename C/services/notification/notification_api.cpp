@@ -24,6 +24,21 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 
 /**
+ * Wrapper function for the notification POST callback API call used for audit events.
+ *
+ * POST /notification/reading/audit/{auditCode}
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void notificationAuditReceiveWrapper(shared_ptr<HttpServer::Response> response,
+				shared_ptr<HttpServer::Request> request)
+{
+	NotificationApi* api = NotificationApi::getInstance();
+	api->processAuditCallback(response, request);
+}
+
+/**
  * Wrapper function for the notification POST callback API call.
  *
  * POST /notification/reading/asset/{assetName}
@@ -276,6 +291,7 @@ void NotificationApi::wait() {
 void NotificationApi::initResources()
 {       
 	m_server->resource[RECEIVE_NOTIFICATION]["POST"] = notificationReceiveWrapper;
+	m_server->resource[RECEIVE_AUDIT_NOTIFICATION]["POST"] = notificationAuditReceiveWrapper;
 	m_server->resource[GET_NOTIFICATION_INSTANCES]["GET"] = notificationGetInstances;
 	m_server->resource[GET_NOTIFICATION_RULES]["GET"] = notificationGetRules;
 	m_server->resource[GET_NOTIFICATION_DELIVERY]["GET"] = notificationGetDelivery;
@@ -390,6 +406,49 @@ void NotificationApi::processCallback(shared_ptr<HttpServer::Response> response,
 }
 
 /**
+ * Add data provided in the audit payload of callback API call
+ * into the notification queue.
+ * 
+ * This is called by the storage service when new data arrives
+ * for an asset in which we have registered an interest.
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void NotificationApi::processAuditCallback(shared_ptr<HttpServer::Response> response,
+				      shared_ptr<HttpServer::Request> request)
+{
+	try
+	{
+		// URL decode audit code
+		string auditCode = urlDecode(request->path_match[AUDIT_CODE_COMPONENT]);
+		string payload = request->content.string();
+		string responsePayload;
+
+		// Add data to the queue
+		if (queueAuditNotification(auditCode, payload))
+		{
+			responsePayload = "{ \"response\" : \"processed\", \"";
+			responsePayload += auditCode;
+			responsePayload += "\" : \"data queued\" }";
+
+			this->respond(response, responsePayload);
+		}
+		else
+		{
+			responsePayload = "{ \"error\": \"error_message\" }";
+			this->respond(response,
+				      SimpleWeb::StatusCode::client_error_bad_request,
+				      responsePayload);
+		}
+	}
+	catch (exception ex)
+	{
+		this->internalError(response, ex);
+	}
+}
+
+/**
  * Add readings data of asset name into the process queue
  *
  * @param assetName	The asset name
@@ -408,7 +467,7 @@ bool NotificationApi::queueNotification(const string& assetName,
 	{
 		m_logger->error("Exception '" + string(ex->what()) + \
 				"' while parsing readings for asset '" + \
-				assetName + "'" );
+				assetName + "' with payload " + payload);
 		delete ex;
 		return false;
 	}
@@ -424,6 +483,49 @@ bool NotificationApi::queueNotification(const string& assetName,
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
 	NotificationQueueElement* item =  new NotificationQueueElement(assetName, readings);
+
+	// Add element to the queue
+	return queue->addElement(item);
+}
+
+/**
+ * Add audit data of asset name into the process queue
+ *
+ * @param auditCode	The audit code
+ * @param payload	The data for the audit code
+ * @return		false error, true on success
+ */
+bool NotificationApi::queueAuditNotification(const string& auditCode,
+					const string& payload)
+{
+	Reading *reading = new Reading(auditCode, payload);
+	vector<Reading *> readingVec;
+	readingVec.push_back(reading);
+	ReadingSet* readings = NULL;
+	try
+	{
+		readings = new ReadingSet(&readingVec);
+	}
+	catch (exception* ex)
+	{
+		m_logger->error("Exception '" + string(ex->what()) + \
+				"' while parsing readings for audit code '" + \
+				auditCode + "' with payload " + payload);
+		delete ex;
+		return false;
+	}
+	catch (...)
+	{
+		std::exception_ptr p = std::current_exception();
+		string name = (p ? p.__cxa_exception_type()->name() : "null");
+		m_logger->error("Exception '" + name + \
+				"' while parsing readings for audit code '" + \
+				auditCode  + "'" );
+		return false;
+	}
+
+	NotificationQueue* queue = NotificationQueue::getInstance();
+	NotificationQueueElement* item =  new NotificationQueueElement(auditCode, readings);
 
 	// Add element to the queue
 	return queue->addElement(item);
@@ -557,6 +659,7 @@ void NotificationApi::setCallBackURL()
 	m_callBackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/asset/";
 
 	m_logger->debug("Notification service: callBackURL prefix is " + m_callBackURL);
+	m_auditCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/audit/";
 }
 
 /**

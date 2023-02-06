@@ -32,20 +32,19 @@ static const char *default_config = QUOTE({
 		"displayName" : "Rule",
 		"readonly" : "true"
 	},
-	"condition" : {
-		"description" : "Audit log codes to consider",
-		"type" : "enumeration",
-		"options" : [ "ALL", "IN" ],
-		"default" : "ALL",
-		"displayName" : "Audit Log Code",
-		"order" : "1"
-	},
 	"auditCode" : {
-		"description" : "Comma separated list of audit log codes (e.g. CONCH,CONAD)",
+		"description" : "Audit log code to monitor, Leave blank if not required or set to * for all codes",
 		"type" : "string",
-		"default" : "ALL",
-		"displayName" : "Codes",
+		"default" : "",
+		"displayName" : "Audit Code",
 		"order" : "2"
+	},
+	"assetCode" : {
+		"description" : "Asset code to monitor. Leave blank if not required",
+		"type" : "string",
+		"default" : "",
+		"displayName" : "Asset Code",
+		"order" : "3"
 	}
 });
 
@@ -135,28 +134,19 @@ string DataAvailabilityRule::triggers()
 		return ret;
 	}
 	ret = "{\"triggers\" : [ ";
-	std::map<std::string, RuleTrigger *> triggers = handle->getTriggers();
-	for (auto it = triggers.begin();
-		 it != triggers.end();
-		 ++it)
+	string comma = "";
+	for (auto asset : m_assetCodeList)
 	{
-		ret += "{ \"asset\"  : \"" + (*it).first + "\"";
-		if (!(*it).second->getEvaluation().empty())
-		{
-			ret += ", \"" + (*it).second->getEvaluation() + "\" : " +
-				   to_string((*it).second->getInterval()) + " }";
-		}
-		else
-		{
-			ret += " }";
-		}
-
-		if (std::next(it, 1) != triggers.end())
-		{
-			ret += ", ";
-		}
+		ret += comma;
+		ret += "{ \"asset\" : \"" + asset + "\" }";
+		comma = ",";
 	}
-
+	for (auto audit : m_auditCodeList)
+	{
+		ret += comma;
+		ret += "{ \"audit\" : \"" + audit + "\" }";
+		comma = ",";
+	}
 	ret += " ] }";
 	return ret;
 }
@@ -274,21 +264,7 @@ bool DataAvailabilityRule::evalAuditCode(const std::string &auditCodeValue,
 	//vector<std::string> auditCodes = rule->getAuditLogCodes();
 	BuiltinRule *handle = (BuiltinRule *)m_instance;
 	std::map<std::string, RuleTrigger *> triggers = handle->getTriggers();
-	if (m_condition == AUDIT_CODE_ALL)
-	{
-		auditLogEval = true;
-	}
-	else if (m_condition == AUDIT_CODE_IN)
-	{
-		for (auto it = triggers.begin(); it != triggers.end(); ++it)
-		{
-			string auditLogName = (*it).first;
-			if (auditLogName == auditCodeValue)
-			{
-				auditLogEval = true;
-			}
-		}
-	}
+	auditLogEval = true;
 
 	// Return evaluation for current auditLogCode
 	return auditLogEval;
@@ -318,31 +294,48 @@ void DataAvailabilityRule::configure(const ConfigCategory &config)
 	char filter = ',';
 	string::size_type i = 0;
 	string::size_type j = auditCode.find(filter);
-	vector<std::string> auditCodeList;
 	if (j == string::npos && auditCode.length() > 0)
 	{
-		auditCodeList.push_back(auditCode);
+		m_auditCodeList.push_back(auditCode);
 	}
 	while (j != string::npos) 
 	{
-		auditCodeList.push_back(auditCode.substr(i, j-i));
+		m_auditCodeList.push_back(auditCode.substr(i, j-i));
 		i = ++j;
 		j = auditCode.find(filter, j);
 
 		if (j == string::npos)
-			auditCodeList.push_back(auditCode.substr(i, auditCode.length()));
+			m_auditCodeList.push_back(auditCode.substr(i, auditCode.length()));
 	}
 
-	for (int i = 0; i < auditCodeList.size(); ++i)
+	for (int i = 0; i < m_auditCodeList.size(); ++i)
 	{
-		DatapointValue value (auditCodeList[i]);
-		handle->addTrigger(auditCodeList[i], new RuleTrigger(auditCodeList[i], new Datapoint(auditCodeList[i], value)));
+		DatapointValue value (m_auditCodeList[i]);
+		handle->addTrigger(m_auditCodeList[i], new RuleTrigger(m_auditCodeList[i], new Datapoint(m_auditCodeList[i], value)));
+	}
+
+	string assetCode = config.getValue("assetCode");
+	
+	
+	j = assetCode.find(filter);
+	if (j == string::npos && assetCode.length() > 0)
+	{
+		m_assetCodeList.push_back(assetCode);
+	}
+	while (j != string::npos) 
+	{
+		m_assetCodeList.push_back(assetCode.substr(i, j-i));
+		i = ++j;
+		j = assetCode.find(filter, j);
+
+		if (j == string::npos)
+			m_assetCodeList.push_back(assetCode.substr(i, assetCode.length()));
+	}
+
+	for (int i = 0; i < m_assetCodeList.size(); ++i)
+	{
+		DatapointValue value (m_assetCodeList[i]);
+		handle->addTrigger(m_assetCodeList[i], new RuleTrigger(m_assetCodeList[i], new Datapoint(m_assetCodeList[i], value)));
 	}
 	
-	string condition = config.getValue("condition");
-	if (condition.compare("IN") == 0)
-		m_condition = AUDIT_CODE_IN;
-	else if (condition.compare("ALL") == 0)
-		m_condition = AUDIT_CODE_ALL;
-
 }

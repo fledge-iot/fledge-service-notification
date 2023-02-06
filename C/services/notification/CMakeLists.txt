@@ -40,8 +40,6 @@ endif()
 # Find source files
 # C++ main
 file(GLOB SOURCES *.cpp)
-# C++ classes
-file(GLOB COMPONENTS ../common/*.cpp)
 
 # Find Fledge includes and libs, by including FindFledge.cmak file
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR})
@@ -57,9 +55,8 @@ if (NOT FLEDGE_FOUND)
 endif()
 # On success, FLEDGE_INCLUDE_DIRS and FLEDGE_LIB_DIRS variables are set
 
-# Add notification service common/include
-include_directories(../common/include)
-
+# Add include dir(s)
+include_directories(include)
 # Add Fledge include dir(s)
 include_directories(${FLEDGE_INCLUDE_DIRS})
 
