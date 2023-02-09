@@ -1043,7 +1043,7 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
 	if (!rulePlugin)
 	{
 		string errMsg("Cannot load rule plugin '" + rule + "'");
-		m_logger->fatal(errMsg.c_str());
+		m_logger->error(errMsg.c_str());
 		return NULL;
 	}
 
@@ -1068,7 +1068,7 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
 	{
 		string errMsg("Cannot create/update '" + \
 			      ruleCategoryName + "' rule plugin category");
-		m_logger->fatal(errMsg.c_str());
+		m_logger->error(errMsg.c_str());
 
 		delete rulePlugin;
 		return NULL;
@@ -1093,7 +1093,7 @@ RulePlugin* NotificationManager::createRuleCategory(const string& name,
 	{
 		string errMsg("Cannot create/update/register '" + \
 			      ruleCategoryName + "' rule plugin category: " + ex->what());
-		m_logger->fatal(errMsg.c_str());
+		m_logger->error(errMsg.c_str());
 		delete ex;
 		delete rulePlugin;
 		return NULL;
@@ -1145,7 +1145,7 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 	if (!deliveryPlugin)
 	{
 		string errMsg("Cannot load delivery plugin '" + delivery + "'");
-		m_logger->fatal(errMsg.c_str());
+		m_logger->error(errMsg.c_str());
 		return NULL;
 	}
 
@@ -1171,7 +1171,7 @@ DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, 
 		{
 			string errMsg("Cannot create/update '" + \
 					  deliveryCategoryName + "' delivery plugin category");
-			m_logger->fatal(errMsg.c_str());
+			m_logger->error(errMsg.c_str());
 
 			delete deliveryPlugin;
 			return NULL;
@@ -1646,7 +1646,7 @@ bool NotificationInstance::updateInstance(const string& name,
 		}
 		else
 		{
-			Logger::getLogger()->fatal("Errors found while enabling notification instance '%s'",
+			Logger::getLogger()->error("Errors found while enabling notification instance '%s' the notification will not be enabled",
 						   name.c_str());
 		}
 		return enabled;
@@ -1691,7 +1691,7 @@ bool NotificationInstance::updateInstance(const string& name,
 		}
 		else
 		{
-			Logger::getLogger()->fatal("Errors found while disabling notification instance '%s'",
+			Logger::getLogger()->error("Errors found while disabling notification instance '%s'",
 						   name.c_str());
 		}
 
@@ -1905,7 +1905,7 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	}
 	else
 	{
-		m_logger->fatal("Unable to fetch Notification type "
+		m_logger->error("Unable to fetch Notification type "
 				"in Notification instance '" + \
 				notificationName + "' configuration.");
 		return false;
@@ -1913,7 +1913,7 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	nType.type = this->parseType(notification_type);
 	if (nType.type == E_NOTIFICATION_TYPE::None)
 	{
-		m_logger->fatal("Found unsupported Notification type '" + \
+		m_logger->error("Found unsupported Notification type '" + \
 				notification_type + \
 				"' in Notification instance '" + \
 				notificationName + "' configuration.");
@@ -1928,14 +1928,14 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 
 	if (enabled && rulePluginName.empty())
 	{
-		m_logger->fatal("Unable to fetch Notification Rule "
+		m_logger->error("Unable to fetch Notification Rule "
 				"plugin name from Notification instance '" + \
 				notificationName + "' configuration.");
 		return false;
 	}
 	if (enabled && deliveryPluginName.empty())
 	{
-		m_logger->fatal("Unable to fetch Notification Delivery "
+		m_logger->error("Unable to fetch Notification Delivery "
 				"plugin name from Notification instance '" + \
 				notificationName + "' configuration");
 		return false;
