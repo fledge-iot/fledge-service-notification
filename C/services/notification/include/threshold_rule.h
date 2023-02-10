@@ -47,6 +47,7 @@ class ThresholdRule : public RulePlugin
 						   double limitValue);
 	private:
 		ThresholdCondition	m_condition;
+		std::string		m_source;
 };
 
 #endif
