@@ -88,6 +88,44 @@ class AuditSubscriptionElement : public SubscriptionElement
 };
 
 /**
+ * The SubscriptionElement class handles the notification registration to
+ * storage server based on statisitic valuesand its notification name.
+ */
+class StatsSubscriptionElement : public SubscriptionElement
+{
+	public:
+		StatsSubscriptionElement(const std::string& stat,
+				    const std::string& notificationName,
+				    NotificationInstance* notification);
+
+		~StatsSubscriptionElement();
+
+		std::string	getStatistic() const { return m_stat; };
+
+	private:
+		std::string	m_stat;
+};
+
+/**
+ * The SubscriptionElement class handles the notification registration to
+ * storage server based on statisitic rate values and its notification name.
+ */
+class StatsRateSubscriptionElement : public SubscriptionElement
+{
+	public:
+		StatsRateSubscriptionElement(const std::string& stat,
+				    const std::string& notificationName,
+				    NotificationInstance* notification);
+
+		~StatsRateSubscriptionElement();
+
+		std::string	getStatistic() const { return m_stat; };
+
+	private:
+		std::string	m_stat;
+};
+
+/**
  * The NotificationSubscription class handles all notification registrations to
  * storage server.
  * Registrations are done per asset name and one asset name might have different
