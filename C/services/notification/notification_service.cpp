@@ -24,6 +24,7 @@
 #include <notification_queue.h>
 #include <notification_subscription.h>
 #include <delivery_queue.h>
+#include <audit_logger.h>
 
 using namespace std;
 
@@ -131,6 +132,9 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
+
+	// Create the AuditLogger
+	AuditLogger *audit = new AuditLogger(m_mgtClient);
 
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
