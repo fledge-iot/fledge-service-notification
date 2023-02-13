@@ -40,7 +40,7 @@ struct AssetTrackInfo
 extern "C" {
 void ingestCB(AssetTrackInfo *info, Reading *reading)
 {
-	info->service->ingestReading(*reading,info->notificationInstanceName.c_str(),info->pluginName.c_str());
+	info->service->ingestReading(*reading, info->notificationInstanceName.c_str(), info->pluginName.c_str());
 }
 NotificationService *getService(NotificationService *service)
 {
@@ -1400,10 +1400,10 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 			if (deliver->ingestData())
 			{
 				
-				AssetTrackInfo* trakeringInfo = new AssetTrackInfo;
-				trakeringInfo->service = m_service;
-				trakeringInfo->notificationInstanceName = notificationName;
-				trakeringInfo->pluginName = deliver->getName();
+				AssetTrackInfo* trackingInfo = new AssetTrackInfo;
+				trackingInfo->service = m_service;
+				trackingInfo->notificationInstanceName = notificationName;
+				trackingInfo->pluginName = deliver->getName();
 				std::vector<AssetTrackingTuple*>& vec = m_managerClient->getAssetTrackingTuples(notificationName);
 				
 				for (AssetTrackingTuple* &rec : vec)
@@ -1413,7 +1413,7 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 						m_service->updateAssetTrackerCache(*rec);
 					}
 				}
-				deliver->registerIngest((void *)ingestCB, (void *) trakeringInfo);
+				deliver->registerIngest((void *)ingestCB, (void *)trackingInfo);
 				
 				
 			}
@@ -1518,7 +1518,11 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 			// Check and set registerIngest
 			if (deliver->ingestData())
 			{
-				deliver->registerIngest((void *)ingestCB, (void *)m_service);
+				AssetTrackInfo* trackingInfo  = new AssetTrackInfo;
+				trackingInfo->service = m_service;
+				trackingInfo->notificationInstanceName = notificationName;
+				trackingInfo->pluginName = deliver->getName();
+				deliver->registerIngest((void *)ingestCB, (void *)trackingInfo);
 			}
 
 			// Check and set the NotificationService class

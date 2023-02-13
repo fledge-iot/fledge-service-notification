@@ -133,6 +133,9 @@ bool NotificationService::start(string& coreAddress,
 		return false;
 	}
   
+	// Create the Asset Tracker
+	m_assetTracker = new AssetTracker(m_mgtClient, m_name);
+	
 	// Create the AuditLogger
 	AuditLogger *audit = new AuditLogger(m_mgtClient);
 
