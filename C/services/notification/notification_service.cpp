@@ -24,6 +24,7 @@
 #include <notification_queue.h>
 #include <notification_subscription.h>
 #include <delivery_queue.h>
+#include <audit_logger.h>
 
 using namespace std;
 
@@ -131,15 +132,10 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
+  
+	// Create the AuditLogger
+	AuditLogger *audit = new AuditLogger(m_mgtClient);
 
-	// Create AssetTracker instance to be used by delivery plugin in case a new asset in created
-	m_assetTracker = new AssetTracker(m_mgtClient, m_name);
-	//m_assetTracker->populateAssetTrackingCache( m_name, "Notify");
-	std::vector<AssetTrackingTuple*>& vec = m_mgtClient->getAssetTrackingTuples();
-	m_logger->error("** All Asset Tracked ==> %d",vec.size());
-	// std::vector<AssetTrackingTuple*>& vec2 = m_mgtClient->getAssetTrackingTuples("SN3");
-	// m_logger->error("** All Asset Tracked for SN3 ==> %d",vec2.size());
-	
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
 	notificationConfig.setDescription("Notification services");
