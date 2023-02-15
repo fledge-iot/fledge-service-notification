@@ -30,7 +30,10 @@
 
    <a href="../../fledge_plugins.html#notification-delivery-plugins">Notification Delivery Plugins</a>
 
+.. |audit_trail| raw:: html
 
+   <a href="../../rest_api_guide/03_RESTadmin.html#audit">Audit Trail</a>
+   
 *********************
 Notifications Service
 *********************
@@ -47,6 +50,12 @@ that adds an event engine to the Fledge installation. Notifications can be creat
 Not all notification rule plugins are able to accept and process all
 types of data, therefore you may find particular rules only offer
 a subset of the notification data sources.
+
+Notification Data Sources
+=========================
+
+The following sections discuss each of the sources of data that may be
+used to cause evaluation of the notification rules.
 
 Reading Data
 ------------
@@ -87,7 +96,7 @@ the rate every 15 seconds and show the rates for 15 second intervals.
 Audit Data
 ----------
 
-The notifications can register to obtain the audit log entries as they
+The notifications can register to obtain the |audit_trail| entries as they
 are raised by the system to the audit logger. These notifications receive
 data with the audit log name code as the data name and the data that is
 posted with the audit log entry as the data points of the data. There is a
@@ -401,83 +410,7 @@ cause fail over to a standby system.
 Audit Data Example
 ------------------
 
-A simple example of a notification based on audit data would be to send a notification any time any service restarts. We do this by looking for particular audit codes, the audit codes that are supported by the system are
-
-+------------+-------------------------------+
-| Audit code | Description                   |
-+============+===============================+
-| ASTDP      | Asset deprecated              |
-+------------+-------------------------------+
-| ASTUN      | Asset un-deprecated           |
-+------------+-------------------------------+
-| AUMRK      | Audit Log Marker              |
-+------------+-------------------------------+
-| BKEXC      | Backup Complete               |
-+------------+-------------------------------+
-| CONAD      | Configuration Addition        |
-+------------+-------------------------------+
-| CONCH      | Configuration Change          |
-+------------+-------------------------------+
-| DSPSD      | Dispatcher Shutdown           |
-+------------+-------------------------------+
-| DSPST      | Dispatcher Startup            |
-+------------+-------------------------------+
-| ESSRT      | External Service Startup      |
-+------------+-------------------------------+
-| ESSTP      | External Service Shutdown     |
-+------------+-------------------------------+
-| FSTOP      | System Shutdown               |
-+------------+-------------------------------+
-| LOGGN      | Logging Process               |
-+------------+-------------------------------+
-| NHAVL      | North Destination Available   |
-+------------+-------------------------------+
-| NHCOM      | North Process Complete        |
-+------------+-------------------------------+
-| NHDWN      | North Destination Unavailable |
-+------------+-------------------------------+
-| NTFAD      | Notification Added            |
-+------------+-------------------------------+
-| NTFCL      | Notification Cleared          |
-+------------+-------------------------------+
-| NTFDL      | Notification Deleted          |
-+------------+-------------------------------+
-| NTFSD      | Notification Server Shutdown  |
-+------------+-------------------------------+
-| NTFSN      | Notification Sent             |
-+------------+-------------------------------+
-| NTFST      | Notification Server Startup   |
-+------------+-------------------------------+
-| PIPIN      | Pip installation              |
-+------------+-------------------------------+
-| PKGIN      | Package installation          |
-+------------+-------------------------------+
-| PKGRM      | Package purged                |
-+------------+-------------------------------+
-| PKGUP      | Package updated               |
-+------------+-------------------------------+
-| PURGE      | Data Purging Process          |
-+------------+-------------------------------+
-| SCHAD      | Schedule Addition             |
-+------------+-------------------------------+
-| SCHCH      | Schedule Change               |
-+------------+-------------------------------+
-| SRVFL      | Service Fail                  |
-+------------+-------------------------------+
-| SRVRG      | Service Registered            |
-+------------+-------------------------------+
-| SRVRS      | Service Restart               |
-+------------+-------------------------------+
-| SRVUN      | Service Unregistered          |
-+------------+-------------------------------+
-| START      | System Startup                |
-+------------+-------------------------------+
-| STRMN      | Streaming Process             |
-+------------+-------------------------------+
-| SYPRG      | System Purge                  |
-+------------+-------------------------------+
-| UPEXC      | Update Complete               |
-+------------+-------------------------------+
+A simple example of a notification based on audit data would be to send a notification any time any service restarts. We do this by looking for particular audit codes, the audit codes that are supported by the system are defined in the |audit_trail| section.
 
 The audit code we will use in this case is SRVRG which is written whenever
 a new service instance registers with the Fledge core.
