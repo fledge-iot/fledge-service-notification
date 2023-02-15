@@ -79,6 +79,7 @@ NotificationService::~NotificationService()
 	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
+	delete m_assetTracker;
 }
 
 /**
