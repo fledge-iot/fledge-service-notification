@@ -31,19 +31,28 @@ static const char *default_config = QUOTE({
 				"displayName" : "Rule",
 				"readonly": "true"
 				},
-			"asset" : {
-				"description": "The asset name for which notifications will be generated.",
-				"type": "string",
-				"default": "",
-				"displayName" : "Asset name",
+			"source" : {
+				"description": "Source of the data to use for the thresholding rule.",
+				"type": "enumeration",
+				"default": "Readings",
+				"options" : [ "Readings", "Statistics", "Statistics History" ],
+				"displayName" : "Data Source",
 				"order": "1"
 				},
-			"datapoint" : {
-				"description": "The datapoint within the asset name for which notifications will be generated.",
+			"asset" : {
+				"description": "The name of the asset or statistic for which notifications will be generated.",
 				"type": "string",
 				"default": "",
-				"displayName" : "Datapoint name",
+				"displayName" : "Name",
 				"order": "2"
+				},
+			"datapoint" : {
+				"description": "The datapoint name within the asset name, if the source is 'Readings' for which notifications will be generated.",
+				"type": "string",
+				"default": "",
+				"displayName" : "Value",
+				"order": "3",
+				"validity": "source == \"Readings\""
 				},
 			"condition" : {
 				"description": "The condition to evalaute", 
@@ -51,14 +60,14 @@ static const char *default_config = QUOTE({
 				"options": [ ">", ">=", "<", "<=" ],
 				"default" : ">",
 				"displayName" : "Condition",
-				"order": "3"
+				"order": "4"
 				},
 			"trigger_value" : {
 				"description": "Value at which to trigger a notification.",
 				"type": "float",
 				"default": "0.0",
 				"displayName" : "Trigger value",
-				"order": "4"
+				"order": "5"
 				},
 			"evaluation_data": {
 				"description": "The rule evaluation data: single item or window", 
@@ -66,7 +75,7 @@ static const char *default_config = QUOTE({
 				"options": [ "Single Item", "Window"],
 				"default" : "Single Item",
 				"displayName" : "Evaluation data",
-				"order": "5"
+				"order": "6"
 				},
 			"window_data": {
 				"description": "Window data evaluation type",
@@ -75,7 +84,7 @@ static const char *default_config = QUOTE({
 				"default" : "Average",
 				"displayName" : "Window evaluation",
 				"validity" : "evaluation_data != \"Single Item\"",
-				"order": "6"
+				"order": "7"
 				},
 			"time_window" : {
 				"description": "Duration of the time window, in seconds, for collecting data points",
@@ -83,7 +92,7 @@ static const char *default_config = QUOTE({
 				"default": DEFAULT_TIME_INTERVAL, 
 				"displayName" : "Time window",
 				"validity" : "evaluation_data != \"Single Item\"",
-				"order": "7"
+				"order": "8"
 				}
 	});
 
@@ -181,7 +190,24 @@ string ThresholdRule::triggers()
 		  it != triggers.end();
 		  ++it)
 	{
-		ret += "{ \"asset\"  : \"" + (*it).first + "\"";
+		if (m_source.compare("Readings") == 0)
+		{
+			ret += "{ \"asset\"  : \"" + (*it).first + "\"";
+		}
+		else if (m_source.compare("Statistics") == 0)
+		{
+			ret += "{ \"statistic\"  : \"" + (*it).first + "\"";
+		}
+		else if (m_source.compare("Statistics History") == 0)
+		{
+			ret += "{ \"statisticRate\"  : \"" + (*it).first + "\"";
+		}
+		else
+		{
+			Logger::getLogger()->error("Unknown data source for threshold rule %s",
+					m_source.c_str());
+			ret += "{ \"asset\"  : \"" + (*it).first + "\"";
+		}
 		if (!(*it).second->getEvaluation().empty())
 		{
 			ret += ", \"" + (*it).second->getEvaluation() + "\" : " + \
@@ -444,6 +470,12 @@ void ThresholdRule::configure(const ConfigCategory& config)
 	BuiltinRule* handle = (BuiltinRule *)m_instance;
 	string assetName = config.getValue("asset");
 	string dataPointName = config.getValue("datapoint");
+	m_source = config.getValue("source");
+
+	if (m_source.compare("Statistics") == 0 || m_source.compare("Statistics History") == 0)
+	{
+		dataPointName = "value";
+	}
 
 	if (!assetName.empty() &&
 	    !dataPointName.empty())
