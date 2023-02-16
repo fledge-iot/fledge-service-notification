@@ -17,6 +17,9 @@
 .. |notification_edit| image:: images/notification_edit.jpg
 .. |notification_settings| image:: images/notification_settings.jpg
 .. |notification_settings_icon| image:: images/notification_settings_icon.jpg
+.. |ADHRule| image:: images/ADHRule.jpg
+.. |ADHRatePerMinute| image:: images/ADHRatePerMinute.jpg
+.. |ServiceRestarted| image:: images/ServiceRestarted.jpg
 
 .. Links
 .. |rule_plugins| raw:: html
@@ -27,14 +30,78 @@
 
    <a href="../../fledge_plugins.html#notification-delivery-plugins">Notification Delivery Plugins</a>
 
+.. |audit_trail| raw:: html
 
+   <a href="../../rest_api_guide/03_RESTadmin.html#audit">Audit Trail</a>
+   
 *********************
 Notifications Service
 *********************
 
-Fledge supports an optional service, known as the notification service that adds an event engine to the Fledge installation. The notification services observed data as it flows into the Fledge storage service buffer and processes that data against a set of rules that are configurable by the user to determine if an event has occurred. Events may be either when a condition that was previously not met being is, or a condition that was previously met becoming no longer true. The notification service can then send a notification when an event occurs or, in the case of a condition that is met, it can send notifications as long as that condition is met.
+Fledge supports an optional service, known as the notification service
+that adds an event engine to the Fledge installation. Notifications can be created based
 
-The notification services operates on data that is in the storage layer, and is independent of the individual south services. This means that the notification rules can use data from several south services to evaluate if a condition has occurred. Also the data that is observed by the notification is after any filtering rules have been applied in the south services but before any filtering that occurs in the north tasks. The mechanism used to allow the notification service to observe data is that the notifications register with the storage service to be given the values for particular assets as they arrive at the storage service. A notification may register for several assets and is free to buffer that data internally within the notification service. This registration does not impact how the data that is requested is treated in the rest of the system; it will still for example follow the normal processing rules to be sent onward to the north systems.
+  - The data that is flowing through Fledge.
+
+  - The statistics that Fledge is collecting.
+
+  - The audit log entries that Fledge creates.
+
+Not all notification rule plugins are able to accept and process all
+types of data, therefore you may find particular rules only offer
+a subset of the notification data sources.
+
+Notification Data Sources
+=========================
+
+The following sections discuss each of the sources of data that may be
+used to cause evaluation of the notification rules.
+
+Reading Data
+------------
+
+The notification services observes data as it flows into the Fledge
+storage service buffer and processes that data against a set of rules that
+are configurable by the user to determine if an event has occurred. Events
+may be either when a condition that was previously not met being is,
+or a condition that was previously met becoming no longer true. The
+notification service can then send a notification when an event occurs
+or, in the case of a condition that is met, it can send notifications
+as long as that condition is met.
+
+The notification services operates on data that is in the storage layer,
+and is independent of the individual south services. This means that
+the notification rules can use data from several south services to
+evaluate if a condition has occurred. Also the data that is observed
+by the notification is after any filtering rules have been applied in
+the south services but before any filtering that occurs in the north
+tasks. The mechanism used to allow the notification service to observe
+data is that the notifications register with the storage service to be
+given the values for particular assets as they arrive at the storage
+service. A notification may register for several assets and is free
+to buffer that data internally within the notification service. This
+registration does not impact how the data that is requested is treated
+in the rest of the system; it will still for example follow the normal
+processing rules to be sent onward to the north systems.
+
+Statistics Data
+---------------
+
+The notifications can register to obtain two variants of the
+statistics data, the raw statistic increments as they occur or the
+statistics rates. The frequency of statistic rate updates depends on the
+configuration of the *stats collection* schedule. The default is to update
+the rate every 15 seconds and show the rates for 15 second intervals.
+
+Audit Data
+----------
+
+The notifications can register to obtain the |audit_trail| entries as they
+are raised by the system to the audit logger. These notifications receive
+data with the audit log name code as the data name and the data that is
+posted with the audit log entry as the data points of the data. There is a
+limited set of notification rule plugins that can be used with this data as
+it tends to be non-numeric and most plugins expect to sue numeric data.
 
 Notifications
 =============
@@ -294,3 +361,68 @@ A single page dialog appears that allows you to change any of the parameters of 
 Once you have updated your notification click *Save* to action the changes.
 
 If you wish to delete your notification this may be done by clicking the *Delete* button at the base of the dialog.
+
+Statistics Rate Example
+-----------------------
+
+A simple example of the use of statistics for a notification is to
+monitor the flow of data within a pipeline. We can use the statistics
+that the north service updates for the data processed by the north
+service to determine if the service is functioning and sending data out
+of the Fledge instance. In this case the name of the statistic we want
+to monitor is the same as the name of the service.
+
+We will assume we have a service called *ADH* that sends data to the AVEVA Data Hub. 
+
+  - We create a notification as described above, selecting the *Threshold* filter for the notification.
+
+    +-----------+
+    | |ADHRule| |
+    +-----------+
+
+  - We select the *Data Source* as *Statistics History*, this will gives a a value every 15 seconds of the number of readings sent to ADH in the previous 15 seconds. We expect at least one value will be sent every 15 seconds.
+
+  - Select a condition of *<* and enter a value of *1*.
+   
+This will cause the notification to trigger if the value of the statistic
+is less than 1. If we wanted to trigger on a low rather than 0 flow of
+data then we can obviously increase this value. Of course that is reliant
+on the user knowing what a reasonable value is. It might be better, if an
+alert is required when the flow drops of to use the 8Average* filter and
+define if the flow rate drop by 10%, or whatever percentage is required,
+below the observed average flow rate then raise a notification.
+
+If the flow rate is low, or we wanted to look at rates other than the 15
+seconds samples we can use the *Window* evaluation and set the period we
+would like to observe values over. The example below shows how we would
+look at the average flow rate per minute.
+
++--------------------+
+| |ADHRatePerMinute| |
++--------------------+
+
+We can configure any of the supported delivery plugins for our new
+notification dependent on how and who or what we would like to inform
+regarding this condition. It may be a simple message to an operator,
+raising a ticket in a ticketing system or issue some control message to
+cause fail over to a standby system.
+
+Audit Data Example
+------------------
+
+A simple example of a notification based on audit data would be to send a notification any time any service restarts. We do this by looking for particular audit codes, the audit codes that are supported by the system are defined in the |audit_trail| section.
+
+The audit code we will use in this case is SRVRG which is written whenever
+a new service instance registers with the Fledge core.
+
+As with any notification we start by creating a naming the notification. Then we select the notification rule plugin. In this case we will use the *Data Availability* plugin. This rule triggers every time it receives data that matches the asset name or audit name it is given.
+
+We enter the required audit code in the *Audit Code* field. If we wanted to monitor several audit codes we could a comma separated list, however in this case one entry is sufficient.
+
+We leave the *Asset Code* blank as we do not wish to monitor any reading data.
+
++--------------------+
+| |ServiceRestarted| |
++--------------------+
+
+Each time a *SRVRG* audit entry is made a notification will be sent, again any of the notification delivery mechanisms can be used to support the delivery of this notification.
