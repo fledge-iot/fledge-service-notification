@@ -63,6 +63,35 @@ AssetSubscriptionElement::AssetSubscriptionElement(const std::string& assetName,
  */
 AssetSubscriptionElement::~AssetSubscriptionElement()
 {
+
+}
+
+/**
+ * Register the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AssetSubscriptionElement::registerSubscription(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getCallBackURL();
+	string asset = m_asset;
+	return storage.registerAssetNotification(asset, callBackURL + urlEncode(asset));
+}
+
+/**
+ * Unregister the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AssetSubscriptionElement::unregister(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getCallBackURL();
+	string asset = m_asset;
+	return storage.unregisterAssetNotification(m_name, callBackURL + urlEncode(asset));
 }
 
 /**
@@ -84,6 +113,36 @@ AuditSubscriptionElement::~AuditSubscriptionElement()
 }
 
 /**
+ * Register the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AuditSubscriptionElement::registerSubscription(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getAuditCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_code);
+	return storage.registerTableNotification("log", "code", keyValues, "insert", callBackURL);
+}
+
+/**
+ * Unregister the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AuditSubscriptionElement::unregister(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getAuditCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_code);
+	return storage.unregisterTableNotification("log", "code", keyValues, "insert", callBackURL);
+}
+
+/**
  * Constructor for statistics subscription elements
  */
 StatsSubscriptionElement::StatsSubscriptionElement(const std::string& stat,
@@ -102,6 +161,36 @@ StatsSubscriptionElement::~StatsSubscriptionElement()
 }
 
 /**
+ * Register the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool StatsSubscriptionElement::registerSubscription(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getStatsCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_stat);
+	return storage.registerTableNotification("statistics", "key", keyValues, "update", callBackURL);
+}
+
+/**
+ * Unregister the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool StatsSubscriptionElement::unregister(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getStatsCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_stat);
+	return storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL);
+}
+
+/**
  * Constructor for statistics subscription elements
  */
 StatsRateSubscriptionElement::StatsRateSubscriptionElement(const std::string& stat,
@@ -117,6 +206,36 @@ StatsRateSubscriptionElement::StatsRateSubscriptionElement(const std::string& st
  */
 StatsRateSubscriptionElement::~StatsRateSubscriptionElement()
 {
+}
+
+/**
+ * Register the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool StatsRateSubscriptionElement::registerSubscription(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getStatsCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_stat);
+	return storage.registerTableNotification("statistics_history", "key", keyValues, "insert", callBackURL);
+}
+
+/**
+ * Unregister the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool StatsRateSubscriptionElement::unregister(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getStatsCallbackURL();
+	vector<std::string> keyValues;
+	keyValues.push_back(m_stat);
+	return storage.unregisterTableNotification("statistics_history", "key", keyValues, "insert", callBackURL);
 }
 
 /**
@@ -163,8 +282,7 @@ void NotificationSubscription::unregisterSubscriptions()
 		  ++it)
 	{
 		// Unregister interest
-		m_storage.unregisterAssetNotification((*it).first,
-						      callBackURL + urlEncode((*it).first));
+		it->second[0].unregister(m_storage);
 		m_logger->info("Unregistering asset '" + \
 			       (*it).first + "' for notification " + \
 			       this->getNotificationName());
@@ -241,105 +359,17 @@ bool NotificationSubscription::addSubscription(const SubscriptionElement& elemen
 		return false;
 	}
 
-	if (typeid(element) == typeid(AssetSubscriptionElement))
+	string key = element.getKey();
+	m_subscriptions[key].push_back(element);
+	if (m_subscriptions[key].size() == 1)
 	{
-		const AssetSubscriptionElement *elem = (AssetSubscriptionElement *)&element;
-		const string& assetName = elem->getAssetName();
-		/**
-		 * We can have different Subscriptions for each asset:
-		 * add new one into the vector
-		 */
-		m_subscriptions[assetName].push_back(element);
-
-		// Register once per asset Notification interest to Storage server
-		if (m_subscriptions[assetName].size() == 1)
-		{
-			m_storage.registerAssetNotification(assetName,
-							    (callBackURL + urlEncode(assetName)));
-
-			m_logger->info("Registering asset '" + \
-				       assetName + "' for notification " + \
-				       element.getNotificationName());
-		}
-
-		m_logger->info("Subscription for asset '" + assetName + \
-			       "' has # " + to_string(m_subscriptions[assetName].size()) + " rules");
+		element.registerSubscription(m_storage);
+		m_logger->info("Register for %s notification from the storage layer", key.c_str());
 	}
-	else if (typeid(element) == typeid(AuditSubscriptionElement))
-	{
-		const AuditSubscriptionElement *elem = (AuditSubscriptionElement *)&element;
-		const string& code = elem->getAuditCode();
-		/**
-		 * We can have different Subscriptions for each asset:
-		 * add new one into the vector
-		 */
-		m_subscriptions[code].push_back(element);
 
-		// Register once per asset Notification interest to Storage server
-		if (m_subscriptions[code].size() == 1)
-		{
-			string operation = "insert";
-			string tableName = "log";
-			string key = "code";
-			vector<string> keyValues;
-			keyValues.push_back(code);
-			m_storage.registerTableNotification(tableName, key, keyValues, operation, (auditCallbackURL + urlEncode(code)));
 
-			m_logger->info("Registering key '" + \
-				       code + "' for notification " + \
-				       element.getNotificationName());
-		}
-	}
-	else if (typeid(element) == typeid(StatsSubscriptionElement))
-	{
-		const StatsSubscriptionElement *elem = (StatsSubscriptionElement *)&element;
-		const string& stat = elem->getStatistic();
-		/**
-		 * We can have different Subscriptions for each asset:
-		 * add new one into the vector
-		 */
-		m_subscriptions[stat].push_back(element);
-
-		// Register once per asset Notification interest to Storage server
-		if (m_subscriptions[stat].size() == 1)
-		{
-			string operation = "update";
-			string tableName = "statistics";
-			string key = "key";
-			vector<string> keyValues;
-			keyValues.push_back(stat);
-			m_storage.registerTableNotification(tableName, key, keyValues, operation, (statsCallbackURL + urlEncode(stat)));
-
-			m_logger->info("Registering key '" + \
-				       stat + "' for notification " + \
-				       element.getNotificationName());
-		}
-	}
-	else if (typeid(element) == typeid(StatsRateSubscriptionElement))
-	{
-		const StatsRateSubscriptionElement *elem = (StatsRateSubscriptionElement *)&element;
-		const string& stat = elem->getStatistic();
-		/**
-		 * We can have different Subscriptions for each asset:
-		 * add new one into the vector
-		 */
-		m_subscriptions[stat].push_back(element);
-
-		// Register once per asset Notification interest to Storage server
-		if (m_subscriptions[stat].size() == 1)
-		{
-			string operation = "insert";
-			string tableName = "statistics_history";
-			string key = "key";
-			vector<string> keyValues;
-			keyValues.push_back(stat);
-			m_storage.registerTableNotification(tableName, key, keyValues, operation, (statsCallbackURL + urlEncode(stat)));
-
-			m_logger->info("Registering key '" + \
-				       stat + "' for notification " + \
-				       element.getNotificationName());
-		}
-	}
+	m_logger->info("Subscription for  '" + key + \
+			       "' has # " + to_string(m_subscriptions[key].size()) + " rules");
 
 	return true;
 }
@@ -389,76 +419,7 @@ EvaluationType NotificationSubscription::getEvalType(const Value& value)
  */
 void NotificationSubscription::unregisterSubscription(const SubscriptionElement& element)
 {
-	// Get NotificationAPI instance
-	NotificationApi* api = NotificationApi::getInstance();
-	// Get callback URL
-	string callBackURL = api->getCallBackURL();
-
-	// Get all NotificationSubscriptions
-	string name;
-	if (typeid(element) == typeid(AssetSubscriptionElement))
-	{
-		const AssetSubscriptionElement *elem = static_cast<const AssetSubscriptionElement *>(&element);
-		name = elem->getAssetName();
-	}
-	else if (typeid(element) == typeid(AuditSubscriptionElement))
-	{
-		const AuditSubscriptionElement *elem = static_cast<const AuditSubscriptionElement *>(&element);
-		name = elem->getAuditCode();
-	}
-	else if (typeid(element) == typeid(StatsSubscriptionElement))
-	{
-		const StatsSubscriptionElement *elem = static_cast<const StatsSubscriptionElement *>(&element);
-		name = elem->getStatistic();
-	}
-	else if (typeid(element) == typeid(StatsRateSubscriptionElement))
-	{
-		const StatsRateSubscriptionElement *elem = static_cast<const StatsRateSubscriptionElement *>(&element);
-		name = elem->getStatistic();
-	}
-	else
-	{
-		Logger::getLogger()->error("Internal error, attempting to unregister un unsupported subscription type");
-		return;
-	}
-	std:map<std::string, std::vector<SubscriptionElement>>&
-		subscriptions = this->getAllSubscriptions();
-	auto it = subscriptions.find(name);
-
-	if (it != subscriptions.end())
-	{
-		// Unregister interest
-		if (typeid(element) == typeid(AssetSubscriptionElement))
-		{
-			m_storage.unregisterAssetNotification((*it).first,
-						      callBackURL + urlEncode(name));
-		}
-		else if (typeid(element) == typeid(AuditSubscriptionElement))
-		{
-			const AuditSubscriptionElement *elem = static_cast<const AuditSubscriptionElement *>(&element);
-			vector<std::string> keyValues;
-			keyValues.push_back(elem->getAuditCode());
-			m_storage.unregisterTableNotification("log", "code", keyValues, "insert", callBackURL);
-		}
-		else if (typeid(element) == typeid(StatsSubscriptionElement))
-		{
-			const StatsSubscriptionElement *elem = static_cast<const StatsSubscriptionElement *>(&element);
-			vector<std::string> keyValues;
-			keyValues.push_back(elem->getStatistic());
-			m_storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL);
-		}
-		else if (typeid(element) == typeid(StatsRateSubscriptionElement))
-		{
-			const StatsRateSubscriptionElement *elem = static_cast<const StatsRateSubscriptionElement *>(&element);
-			vector<std::string> keyValues;
-			keyValues.push_back(elem->getStatistic());
-			m_storage.unregisterTableNotification("statistics_history", "key", keyValues, "insert", callBackURL);
-		}
-
-		m_logger->info("Unregistering asset '" + \
-				name + "' for notification " + \
-				this->getNotificationName());
-	}
+	element.unregister(m_storage);
 }
 
 /**
@@ -560,7 +521,8 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 					this->getEvalType(*itr);
 
 				// Create NotificationDetail object
-				NotificationDetail assetInfo(asset,
+				NotificationDetail assetInfo("asset",
+						 	     asset,
 							     ruleName,
 							     type);
 
@@ -588,7 +550,8 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 					this->getEvalType(*itr);
 
 				// Create NotificationDetail object
-				NotificationDetail auditInfo(code,
+				NotificationDetail auditInfo("audit",
+							     code,
 							     ruleName,
 							     type);
 
@@ -615,7 +578,8 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 					this->getEvalType(*itr);
 
 				// Create NotificationDetail object
-				NotificationDetail statsInfo(stat,
+				NotificationDetail statsInfo("stat",
+						  	     stat,
 							     ruleName,
 							     type);
 
@@ -642,9 +606,10 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 					this->getEvalType(*itr);
 
 				// Create NotificationDetail object
-				NotificationDetail rateInfo(rate,
-							     ruleName,
-							     type);
+				NotificationDetail rateInfo("rate",
+							    rate,
+							    ruleName,
+							    type);
 
 				// Add assetInfo to its rule
 				theRule->addAsset(rateInfo);
@@ -668,20 +633,23 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 /**
  * Remove a given subscription
  *
+ * @param    source		The data source we are using
  * @param    assetName		The register assetName for notifications
  * @param    ruleName		The associated ruleName
  */
-void NotificationSubscription::removeSubscription(const string& assetName,
+void NotificationSubscription::removeSubscription(const string& source,
+						  const string& assetName,
 						  const string& ruleName)
 {
 	// Get all instances
 	NotificationManager* manager = NotificationManager::getInstance();
 
+	string key = source + "::" + assetName;
 	// Get subscriptions for assetName
 	this->lockSubscriptions();
 	map<string, vector<SubscriptionElement>>&
 		allSubscriptions = this->getAllSubscriptions();
-	auto it = allSubscriptions.find(assetName);
+	auto it = allSubscriptions.find(key);
 	bool ret = it != allSubscriptions.end();
 	
 	// For the found assetName subscriptions

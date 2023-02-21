@@ -551,7 +551,7 @@ void NotificationService::configChange(const string& categoryName,
 					  a != allAssets.end(); )
 				{
 					// Remove assetName/ruleName from subscriptions
-					subscriptions->removeSubscription((*a).getAssetName(),
+					subscriptions->removeSubscription(a->getSource(), a->getAssetName(),
 									  ruleName);
 					// Remove asseet
 					a = allAssets.erase(a);

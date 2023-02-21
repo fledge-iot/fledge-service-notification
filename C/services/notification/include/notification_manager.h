@@ -64,7 +64,8 @@ class EvaluationType
 class NotificationDetail
 {
 	public:
-		NotificationDetail(const std::string& asset,
+		NotificationDetail(const std::string& source,
+				   const std::string& asset,
 				   const std::string& rule,
 				   EvaluationType& value);
 		~NotificationDetail();
@@ -74,11 +75,14 @@ class NotificationDetail
 		const EvaluationType::EVAL_TYPE
 					getType() const { return m_value.getType(); };
 		const time_t		getInterval() const { return m_value.getInterval(); };
+		const std::string	getKey() { return m_source + "::" + m_asset; };
+		const std::string	getSource() { return m_source; };
 
 	private:
 		std::string		m_asset;
 		std::string		m_rule;
 		EvaluationType		m_value;
+		std::string		m_source;
 };
 
 /**

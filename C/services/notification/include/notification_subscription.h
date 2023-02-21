@@ -43,6 +43,9 @@ class SubscriptionElement
 							return NULL;
 					};
 		NotificationInstance*	getInstance() { return m_notification; };
+		virtual bool		registerSubscription(StorageClient& storage) const {};
+		virtual bool		unregister(StorageClient& storage) const {};
+		virtual string		getKey() const {};
 
 	protected:
 		std::string		m_name;
@@ -63,7 +66,9 @@ class AssetSubscriptionElement : public SubscriptionElement
 		~AssetSubscriptionElement();
 
 		std::string	getAssetName() const { return m_asset; };
-
+		bool		registerSubscription(StorageClient& storage) const;
+		bool		unregister(StorageClient& storage) const;
+		string		getKey() const { return string("asset::" + m_asset); };
 	private:
 		std::string	m_asset;
 };
@@ -82,7 +87,9 @@ class AuditSubscriptionElement : public SubscriptionElement
 		~AuditSubscriptionElement();
 
 		std::string	getAuditCode() const { return m_code; };
-
+		bool		registerSubscription(StorageClient& storage) const;
+		bool		unregister(StorageClient& storage) const;
+		string		getKey() const { return string("audit::" + m_code); };
 	private:
 		std::string	m_code;
 };
@@ -101,7 +108,9 @@ class StatsSubscriptionElement : public SubscriptionElement
 		~StatsSubscriptionElement();
 
 		std::string	getStatistic() const { return m_stat; };
-
+		bool		registerSubscription(StorageClient& storage) const;
+		bool		unregister(StorageClient& storage) const;
+		string		getKey() const { return string("stat::" + m_stat); };
 	private:
 		std::string	m_stat;
 };
@@ -120,7 +129,9 @@ class StatsRateSubscriptionElement : public SubscriptionElement
 		~StatsRateSubscriptionElement();
 
 		std::string	getStatistic() const { return m_stat; };
-
+		bool		registerSubscription(StorageClient& storage) const;
+		bool		unregister(StorageClient& storage) const;
+		string		getKey() const { return string("rate::" + m_stat); };
 	private:
 		std::string	m_stat;
 };
@@ -155,7 +166,8 @@ class NotificationSubscription
 		bool			createSubscription(NotificationInstance* instance);
 		void			lockSubscriptions() { m_subscriptionMutex.lock(); };
 		void			unlockSubscriptions() { m_subscriptionMutex.unlock(); };
-		void			removeSubscription(const string& assetName,
+		void			removeSubscription(const string& source,
+							   const string& assetName,
 							   const string& ruleName);
 
 	private:
