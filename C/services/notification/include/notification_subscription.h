@@ -43,9 +43,9 @@ class SubscriptionElement
 							return NULL;
 					};
 		NotificationInstance*	getInstance() { return m_notification; };
-		virtual bool		registerSubscription(StorageClient& storage) const {};
-		virtual bool		unregister(StorageClient& storage) const {};
-		virtual string		getKey() const {};
+		virtual bool		registerSubscription(StorageClient& storage) const = 0;
+		virtual bool		unregister(StorageClient& storage) const = 0;
+		virtual string		getKey() const = 0;
 
 	protected:
 		std::string		m_name;
@@ -154,15 +154,15 @@ class NotificationSubscription
 		void			registerSubscriptions();
 		void			unregisterSubscriptions();
 		const std::string&	getNotificationName() { return m_name; };
-		std::map<std::string, std::vector<SubscriptionElement>>&
+		std::map<std::string, std::vector<SubscriptionElement *>>&
 					getAllSubscriptions() { return m_subscriptions; };
-		std::vector<SubscriptionElement>&
+		std::vector<SubscriptionElement *>&
 					getSubscription(const std::string& assetName)
 					{
 						return m_subscriptions[assetName];
 					};
-		bool 			addSubscription(const SubscriptionElement& element);
-		void			unregisterSubscription(const SubscriptionElement& element);
+		bool 			addSubscription(SubscriptionElement *element);
+		void			unregisterSubscription(SubscriptionElement *element);
 		bool			createSubscription(NotificationInstance* instance);
 		void			lockSubscriptions() { m_subscriptionMutex.lock(); };
 		void			unlockSubscriptions() { m_subscriptionMutex.unlock(); };
@@ -179,7 +179,7 @@ class NotificationSubscription
 					m_instance;
 		StorageClient&		m_storage;
 		// There can be different subscriptions for the same assetName
-		std::map<std::string, std::vector<SubscriptionElement>>
+		std::map<std::string, std::vector<SubscriptionElement *>>
 					m_subscriptions;
 		Logger*			m_logger;
 		std::mutex		m_subscriptionMutex;

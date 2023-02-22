@@ -258,7 +258,7 @@ NotificationSubscription::NotificationSubscription(const string& notificationNam
  */
 NotificationSubscription::~NotificationSubscription()
 {
-	this->getAllSubscriptions().clear();
+	m_subscriptions.clear();
 }
 
 /**
@@ -274,15 +274,14 @@ void NotificationSubscription::unregisterSubscriptions()
 
 	// Get all NotificationSubscriptions
 	m_subscriptionMutex.lock();
-	std:map<std::string, std::vector<SubscriptionElement>>&
-		subscriptions = this->getAllSubscriptions();
 
-	for (auto it = subscriptions.begin();
-		  it != subscriptions.end();
+	for (auto it = m_subscriptions.begin();
+		  it != m_subscriptions.end();
 		  ++it)
 	{
 		// Unregister interest
-		it->second[0].unregister(m_storage);
+		if (it->second.size() && it->second[0])
+			it->second[0]->unregister(m_storage);
 		m_logger->info("Unregistering asset '" + \
 			       (*it).first + "' for notification " + \
 			       this->getNotificationName());
@@ -309,18 +308,18 @@ void NotificationSubscription::registerSubscriptions()
 		  ++it)
 	{
 		// Get asset names from plugin_triggers call
-		NotificationInstance* instance = (*it).second;
+		NotificationInstance* instance = it->second;
 		if (!instance)
 		{
 			m_logger->error("Notification instance %s is NULL",
-					(*it).first.c_str());
+					it->first.c_str());
 			continue;
 		}
 
 		if (!instance->isEnabled())
 		{
 			m_logger->info("Notification instance %s is not enabled.",
-				       (*it).first.c_str());
+				       it->first.c_str());
 			continue;
 		}
 
@@ -343,27 +342,17 @@ void NotificationSubscription::registerSubscriptions()
  *				to current subscriptions.
  * @return			True on succes, false otherwise.
  */
-bool NotificationSubscription::addSubscription(const SubscriptionElement& element)
+bool NotificationSubscription::addSubscription(SubscriptionElement *element)
 {
 
 	// Get NotificationAPI instance
 	NotificationApi* api = NotificationApi::getInstance();
-	// Get callback URL
-	string callBackURL = api->getCallBackURL();
-	string auditCallbackURL = api->getAuditCallbackURL();
-	string statsCallbackURL = api->getStatsCallbackURL();
 
-	if (callBackURL.empty())
-	{
-		m_logger->error("Unable to add subscription for notification, URL is empty");
-		return false;
-	}
-
-	string key = element.getKey();
+	string key = element->getKey();
 	m_subscriptions[key].push_back(element);
 	if (m_subscriptions[key].size() == 1)
 	{
-		element.registerSubscription(m_storage);
+		element->registerSubscription(m_storage);
 		m_logger->info("Register for %s notification from the storage layer", key.c_str());
 	}
 
@@ -417,9 +406,9 @@ EvaluationType NotificationSubscription::getEvalType(const Value& value)
  *
  * @param    element		The subscription element to unregister
  */
-void NotificationSubscription::unregisterSubscription(const SubscriptionElement& element)
+void NotificationSubscription::unregisterSubscription(SubscriptionElement *element)
 {
-	element.unregister(m_storage);
+	element->unregister(m_storage);
 }
 
 /**
@@ -530,7 +519,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				theRule->addAsset(assetInfo);
 
 				// Create subscription object
-				AssetSubscriptionElement subscription(asset,
+				AssetSubscriptionElement *subscription = new AssetSubscriptionElement(asset,
 								 instance->getName(),
 								 instance);
 
@@ -558,7 +547,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				// Add assetInfo to its rule
 				theRule->addAsset(auditInfo);
 
-				AuditSubscriptionElement subscription(code,
+				AuditSubscriptionElement *subscription = new AuditSubscriptionElement(code,
 								 instance->getName(),
 								 instance);
 				lock_guard<mutex> guard(m_subscriptionMutex);
@@ -586,7 +575,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				// Add assetInfo to its rule
 				theRule->addAsset(statsInfo);
 
-				StatsSubscriptionElement subscription(stat,
+				StatsSubscriptionElement *subscription = new StatsSubscriptionElement(stat,
 								 instance->getName(),
 								 instance);
 				lock_guard<mutex> guard(m_subscriptionMutex);
@@ -614,7 +603,7 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				// Add assetInfo to its rule
 				theRule->addAsset(rateInfo);
 
-				StatsRateSubscriptionElement subscription(rate,
+				StatsRateSubscriptionElement *subscription = new StatsRateSubscriptionElement(rate,
 								 instance->getName(),
 								 instance);
 				lock_guard<mutex> guard(m_subscriptionMutex);
@@ -647,10 +636,8 @@ void NotificationSubscription::removeSubscription(const string& source,
 	string key = source + "::" + assetName;
 	// Get subscriptions for assetName
 	this->lockSubscriptions();
-	map<string, vector<SubscriptionElement>>&
-		allSubscriptions = this->getAllSubscriptions();
-	auto it = allSubscriptions.find(key);
-	bool ret = it != allSubscriptions.end();
+	auto it = m_subscriptions.find(key);
+	bool ret = it != m_subscriptions.end();
 	
 	// For the found assetName subscriptions
 	// 1- Unsubscribe notification interest for assetNamme
@@ -659,12 +646,12 @@ void NotificationSubscription::removeSubscription(const string& source,
 	// 4- Remove Subscription
 	if (ret)
 	{
-		vector<SubscriptionElement>& elems = (*it).second;
+		vector<SubscriptionElement *>& elems = it->second;
 		if (elems.size() == 1)
 		{
 		        // 1- We have only one subscription for current asset
 		        // call unregister interest
-			NotificationInstance* instance = elems[0].getInstance();
+			NotificationInstance* instance = elems[0]->getInstance();
 			// Get RulePlugin
 			RulePlugin* rulePluginInstance = instance->getRulePlugin();
 
@@ -681,8 +668,9 @@ void NotificationSubscription::removeSubscription(const string& source,
 		for (auto e = elems.begin();
 			  e != elems.end(); )
 		{
+			SubscriptionElement *element = *e;
 			// Get notification rule object 
-			string notificationName = (*e).getNotificationName();
+			string notificationName = element->getNotificationName();
 			NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 
 			if (instance &&
@@ -723,7 +711,7 @@ void NotificationSubscription::removeSubscription(const string& source,
 		// 4- Remove subscription if array is empty
 		if (!elems.size())
 		{
-			allSubscriptions.erase(it);
+			m_subscriptions.erase(it);
 		}
 	}
 	this->unlockSubscriptions();

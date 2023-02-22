@@ -195,7 +195,7 @@ void NotificationQueue::stop()
 	// so we don't need to lock subscriptions object
 	//
         // Get all subscriptions for assetName
-	std::map<std::string, std::vector<SubscriptionElement>>&
+	std::map<std::string, std::vector<SubscriptionElement *>>&
 		registeredItems = subscriptions->getAllSubscriptions();
 
 	lock_guard<mutex> guard(manager->m_instancesMutex);
@@ -209,7 +209,7 @@ void NotificationQueue::stop()
 			  ++s)
 		{
 			// Get notification rule object
-			string notificationName = (*s).getNotificationName();
+			string notificationName = (*s)->getNotificationName();
 			NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 
 			// Get ruleName
@@ -372,7 +372,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 	NotificationManager* manager = NotificationManager::getInstance();
 
 	subscriptions->lockSubscriptions();
-	std::vector<SubscriptionElement>&
+	std::vector<SubscriptionElement *>&
 		subscriptionItems = subscriptions->getSubscription(assetName);
 
 	for (auto it = subscriptionItems.begin();
@@ -382,7 +382,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 		lock_guard<mutex> guard(manager->m_instancesMutex);
 
 		// Get notification instance name
-		string notificationName = (*it).getNotificationName();
+		string notificationName = (*it)->getNotificationName();
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 		
@@ -706,7 +706,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 	}
 	// Get all subscriptions for assetName
 	subscriptions->lockSubscriptions();
-	std::vector<SubscriptionElement>&
+	std::vector<SubscriptionElement *>&
 		registeredItems = subscriptions->getSubscription(assetName);
 
 	// Get NotificationManager instance
@@ -723,7 +723,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		map<string, AssetData> results;
 
 		// Get notification instance name
-		string notificationName = (*it).getNotificationName();
+		string notificationName = (*it)->getNotificationName();
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 
@@ -734,7 +734,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		{
 			Logger::getLogger()->debug("Skipping instance for asset %s in notification %s",
 						   assetName.c_str(),
-						   (*it).getNotificationName().c_str());
+						   notificationName.c_str());
 			// Skip this instance
 			continue;
 		}
@@ -771,7 +771,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		    (results.size() > 0 && instance->getRule()->evaluateAny()))
 		{
 			// Notification data ready: eval data and sent notification
-			this->sendNotification(results, *it);
+			this->sendNotification(results, **it);
 		}
 	}
 	subscriptions->unlockSubscriptions();
@@ -1785,7 +1785,7 @@ void NotificationQueue::processTime()
 					// Process data buffer and fill results
 					this->processDataBuffer(results,
 								ruleName,
-								(*itr).getAssetName(),
+								itr->getAssetName(),
 								*itr);
 
 					// Add new reading
