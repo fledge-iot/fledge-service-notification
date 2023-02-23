@@ -34,6 +34,7 @@ using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 void notificationStatsRateReceiveWrapper(shared_ptr<HttpServer::Response> response,
 				shared_ptr<HttpServer::Request> request)
 {
+	Logger::getLogger()->debug("Statistics rate callback received");
 	NotificationApi* api = NotificationApi::getInstance();
 	api->processStatsRateCallback(response, request);
 }
@@ -49,6 +50,7 @@ void notificationStatsRateReceiveWrapper(shared_ptr<HttpServer::Response> respon
 void notificationStatsReceiveWrapper(shared_ptr<HttpServer::Response> response,
 				shared_ptr<HttpServer::Request> request)
 {
+	Logger::getLogger()->debug("Statistics callback received");
 	NotificationApi* api = NotificationApi::getInstance();
 	api->processStatsCallback(response, request);
 }
@@ -64,6 +66,7 @@ void notificationStatsReceiveWrapper(shared_ptr<HttpServer::Response> response,
 void notificationAuditReceiveWrapper(shared_ptr<HttpServer::Response> response,
 				shared_ptr<HttpServer::Request> request)
 {
+	Logger::getLogger()->debug("Audit callback received");
 	NotificationApi* api = NotificationApi::getInstance();
 	api->processAuditCallback(response, request);
 }

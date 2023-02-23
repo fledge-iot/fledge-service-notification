@@ -124,7 +124,7 @@ bool AuditSubscriptionElement::registerSubscription(StorageClient& storage) cons
 	string callBackURL = api->getAuditCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_code);
-	return storage.registerTableNotification("log", "code", keyValues, "insert", callBackURL);
+	return storage.registerTableNotification("log", "code", keyValues, "insert", callBackURL + urlEncode(m_code));
 }
 
 /**
@@ -139,7 +139,7 @@ bool AuditSubscriptionElement::unregister(StorageClient& storage) const
 	string callBackURL = api->getAuditCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_code);
-	return storage.unregisterTableNotification("log", "code", keyValues, "insert", callBackURL);
+	return storage.unregisterTableNotification("log", "code", keyValues, "insert", callBackURL + urlEncode(m_code));
 }
 
 /**
@@ -172,7 +172,7 @@ bool StatsSubscriptionElement::registerSubscription(StorageClient& storage) cons
 	string callBackURL = api->getStatsCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
-	return storage.registerTableNotification("statistics", "key", keyValues, "update", callBackURL);
+	return storage.registerTableNotification("statistics", "key", keyValues, "update", callBackURL + urlEncode(m_stat));
 }
 
 /**
@@ -187,7 +187,7 @@ bool StatsSubscriptionElement::unregister(StorageClient& storage) const
 	string callBackURL = api->getStatsRateCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
-	return storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL);
+	return storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL + urlEncode(m_stat));
 }
 
 /**
@@ -220,7 +220,7 @@ bool StatsRateSubscriptionElement::registerSubscription(StorageClient& storage) 
 	string callBackURL = api->getStatsCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
-	return storage.registerTableNotification("statistics_history", "key", keyValues, "insert", callBackURL);
+	return storage.registerTableNotification("statistics_history", "key", keyValues, "insert", callBackURL + urlEncode(m_stat));
 }
 
 /**
@@ -235,7 +235,7 @@ bool StatsRateSubscriptionElement::unregister(StorageClient& storage) const
 	string callBackURL = api->getStatsCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
-	return storage.unregisterTableNotification("statistics_history", "key", keyValues, "insert", callBackURL);
+	return storage.unregisterTableNotification("statistics_history", "key", keyValues, "insert", callBackURL + urlEncode(m_stat));
 }
 
 /**
@@ -352,8 +352,10 @@ bool NotificationSubscription::addSubscription(SubscriptionElement *element)
 	m_subscriptions[key].push_back(element);
 	if (m_subscriptions[key].size() == 1)
 	{
-		element->registerSubscription(m_storage);
-		m_logger->info("Register for %s notification from the storage layer", key.c_str());
+		if (element->registerSubscription(m_storage))
+			m_logger->info("Register for %s notification from the storage layer", key.c_str());
+		else
+			m_logger->error("Failed to register for %s notification from the storage layer", key.c_str());
 	}
 
 
