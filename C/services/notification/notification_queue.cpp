@@ -102,8 +102,9 @@ NotificationDataElement::~NotificationDataElement()
  * @param    assetName	The assetName which gets ntotification data
  * @param    data	The readings data pointer
  */
-NotificationQueueElement::NotificationQueueElement(const string& assetName,
+NotificationQueueElement::NotificationQueueElement(const string& source, const string& assetName,
 						   ReadingSet* data) :
+						   m_source(source),
 						   m_assetName(assetName),
 						   m_readings(data)
 {
@@ -334,12 +335,11 @@ void NotificationQueue::processDataSet(NotificationQueueElement* data)
 	 * (1) Add data to each data buffer[ruleName] related to this assetName
 	 * (2) For each ruleName related to assetName process data in buffer[ruleName]
 	 */
-
 	// (1) feed all rule buffers
 	if (this->feedAllDataBuffers(data))
 	{
 		// (2) process all data in all rule buffers for given assetName
-		this->processAllDataBuffers(data->getAssetName());
+		this->processAllDataBuffers(data->getKey(), data->getAssetName());
 	}
 }
 
@@ -373,7 +373,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 
 	subscriptions->lockSubscriptions();
 	std::vector<SubscriptionElement *>&
-		subscriptionItems = subscriptions->getSubscription(assetName);
+		subscriptionItems = subscriptions->getSubscription(data->getKey());
 
 	for (auto it = subscriptionItems.begin();
 		  it != subscriptionItems.end();
@@ -693,21 +693,23 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
  * (3) If a notification is ready, call rule plugin_eval
  *     and delivery plugin_deliver (if notification has to be sent)
  *
+ * @param    key		The subscription key
  * @param    assetName		Current assetName
  *				that is receiving notifications data
  */
-void NotificationQueue::processAllDataBuffers(const string& assetName)
+void NotificationQueue::processAllDataBuffers(const string& key, const string& assetName)
 {
 	// Get the subscriptions instance
 	NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
 	if (!subscriptions)
 	{
+		Logger::getLogger()->error("Internal error, unable to find the subscriptions for notification data");
 		return;
 	}
 	// Get all subscriptions for assetName
 	subscriptions->lockSubscriptions();
 	std::vector<SubscriptionElement *>&
-		registeredItems = subscriptions->getSubscription(assetName);
+		registeredItems = subscriptions->getSubscription("asset::" + assetName);
 
 	// Get NotificationManager instance
 	NotificationManager* manager = NotificationManager::getInstance();

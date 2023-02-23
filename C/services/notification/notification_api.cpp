@@ -541,8 +541,7 @@ bool NotificationApi::queueNotification(const string& assetName,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(assetName, readings);
-
+	NotificationQueueElement* item =  new NotificationQueueElement("asset", assetName, readings);
 	// Add element to the queue
 	return queue->addElement(item);
 }
@@ -584,7 +583,7 @@ bool NotificationApi::queueAuditNotification(const string& auditCode,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(auditCode, readings);
+	NotificationQueueElement* item =  new NotificationQueueElement("audit", auditCode, readings);
 
 	// Add element to the queue
 	return queue->addElement(item);
@@ -629,7 +628,7 @@ bool NotificationApi::queueStatsNotification(const string& statistic,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(statistic, readings);
+	NotificationQueueElement* item =  new NotificationQueueElement("stats", statistic, readings);
 
 	// Add element to the queue
 	return queue->addElement(item);
