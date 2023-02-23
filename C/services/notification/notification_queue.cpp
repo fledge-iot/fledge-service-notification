@@ -709,7 +709,7 @@ void NotificationQueue::processAllDataBuffers(const string& key, const string& a
 	// Get all subscriptions for assetName
 	subscriptions->lockSubscriptions();
 	std::vector<SubscriptionElement *>&
-		registeredItems = subscriptions->getSubscription("asset::" + assetName);
+		registeredItems = subscriptions->getSubscription(key);
 
 	// Get NotificationManager instance
 	NotificationManager* manager = NotificationManager::getInstance();
@@ -728,15 +728,16 @@ void NotificationQueue::processAllDataBuffers(const string& key, const string& a
 		string notificationName = (*it)->getNotificationName();
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
+		string instanceName = instance->getName();
 
 		// Check wether the instance exists and it is enabled
 		if (!instance ||
 		    !instance->getRule() ||
 		    !instance->isEnabled())
 		{
-			Logger::getLogger()->debug("Skipping instance for asset %s in notification %s",
-						   assetName.c_str(),
-						   notificationName.c_str());
+			Logger::getLogger()->debug("Skipping notification %s for %s, notification %s",
+					   instanceName.c_str(), assetName.c_str(),
+					   (instance->isEnabled() ? "has no rule" : "is not enabled"));
 			// Skip this instance
 			continue;
 		}
@@ -763,7 +764,7 @@ void NotificationQueue::processAllDataBuffers(const string& key, const string& a
 			// Process data buffer and fill results
 			this->processDataBuffer(results,
 						ruleName,
-						(*itr).getAssetName(),
+						itr->getAssetName(),
 						*itr);
 		}
 
@@ -1738,8 +1739,9 @@ void NotificationQueue::processTime()
 			    !instance->getRule() ||
 			    !instance->isEnabled())
 			{
-				Logger::getLogger()->debug("Skipping notification %s",
-					   instanceName.c_str());
+				Logger::getLogger()->debug("Skipping notification %s, notification %s",
+					   instanceName.c_str(),
+					   (instance->isEnabled() ? "has no rule" : "is not enabled"));
 
 				// Instance data and timers found
 				// but instance object not available or not actve:

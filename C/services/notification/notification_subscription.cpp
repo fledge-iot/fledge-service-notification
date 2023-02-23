@@ -184,7 +184,7 @@ bool StatsSubscriptionElement::registerSubscription(StorageClient& storage) cons
 bool StatsSubscriptionElement::unregister(StorageClient& storage) const
 {
 	NotificationApi *api = NotificationApi::getInstance();
-	string callBackURL = api->getStatsCallbackURL();
+	string callBackURL = api->getStatsRateCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
 	return storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL);

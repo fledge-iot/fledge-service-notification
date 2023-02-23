@@ -23,6 +23,7 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
 #define RECEIVE_NOTIFICATION		"^/notification/reading/asset/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
 #define RECEIVE_AUDIT_NOTIFICATION	"^/notification/reading/audit/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
 #define RECEIVE_STATS_NOTIFICATION	"^/notification/reading/stat/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
+#define RECEIVE_STATS_RATE_NOTIFICATION	"^/notification/reading/rate/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
 #define GET_NOTIFICATION_INSTANCES	"^/notification$"
 #define GET_NOTIFICATION_DELIVERY	"^/notification/delivery$"
 #define GET_NOTIFICATION_RULES		"^/notification/rules$"
@@ -78,6 +79,8 @@ class NotificationApi
 						shared_ptr<HttpServer::Request> request);
 		void		processStatsCallback(shared_ptr<HttpServer::Response> response,
 						shared_ptr<HttpServer::Request> request);
+		void		processStatsRateCallback(shared_ptr<HttpServer::Response> response,
+						shared_ptr<HttpServer::Request> request);
 		void		getNotificationObject(NOTIFICATION_OBJECT object,
 						      shared_ptr<HttpServer::Response> response,
 						      shared_ptr<HttpServer::Request> request);
@@ -92,6 +95,8 @@ class NotificationApi
 				getAuditCallbackURL() const { return m_auditCallbackURL; };
 		const std::string&
 				getStatsCallbackURL() const { return m_statsCallbackURL; };
+		const std::string&
+				getStatsRateCallbackURL() const { return m_statsRateCallbackURL; };
 		void		setCallBackURL();
 		bool		removeNotification(const std::string& notificationName);
 		// Add asset name and data to the Readings process queue
@@ -100,6 +105,8 @@ class NotificationApi
 		bool		queueAuditNotification(const string& auditCode,
 						  const string& payload);
 		bool		queueStatsNotification(const string& auditCode,
+						  const string& payload);
+		bool		queueStatsRateNotification(const string& auditCode,
 						  const string& payload);
 
 		void		defaultResource(shared_ptr<HttpServer::Response> response,
@@ -125,6 +132,7 @@ class NotificationApi
 		std::string			m_callBackURL;
 		std::string			m_auditCallbackURL;
 		std::string			m_statsCallbackURL;
+		std::string			m_statsRateCallbackURL;
 		Logger*				m_logger;
 };
 
