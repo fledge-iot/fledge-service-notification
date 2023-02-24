@@ -302,6 +302,10 @@ bool NotificationService::start(string& coreAddress,
 	}
 	else if (m_removeFromCore)
 	{
+		// We need to do this before unregistering
+		m_mgtClient->addAuditEntry("NTFSD",
+					"INFORMATION",
+					"{\"name\": \"" + m_name + "\"}");
 		// Unregister from Fledge
 		m_mgtClient->unregisterService();
 	}
@@ -315,9 +319,6 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_mgtClient->addAuditEntry("NTFSD",
-					"INFORMATION",
-					"{\"name\": \"" + m_name + "\"}");
 
 	return true;
 }
@@ -551,7 +552,7 @@ void NotificationService::configChange(const string& categoryName,
 					  a != allAssets.end(); )
 				{
 					// Remove assetName/ruleName from subscriptions
-					subscriptions->removeSubscription((*a).getAssetName(),
+					subscriptions->removeSubscription(a->getSource(), a->getAssetName(),
 									  ruleName);
 					// Remove asseet
 					a = allAssets.erase(a);

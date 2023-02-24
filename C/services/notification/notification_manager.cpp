@@ -51,12 +51,14 @@ NotificationManager* NotificationManager::m_instance = 0;
  * @param    type	The notification evaluation type
  *	
  */
-NotificationDetail::NotificationDetail(const string& asset,
+NotificationDetail::NotificationDetail(const string& source,
+				       const string& asset,
 				       const string& rule,
 				       EvaluationType& type) :
 				       m_asset(asset),
 				       m_rule(rule),
-				       m_value(type)
+				       m_value(type),
+				       m_source(source)
 {
 }
 
@@ -1673,7 +1675,8 @@ bool NotificationInstance::updateInstance(const string& name,
 			  a != assets.end(); )
 		{
 			lock_guard<mutex> guard(instances->m_instancesMutex);
-			subscriptions->removeSubscription((*a).getAssetName(),
+			subscriptions->removeSubscription(a->getSource(),
+							  a->getAssetName(),
 							  ruleName);
 			// Remove asset
 			a = assets.erase(a);
@@ -1744,7 +1747,8 @@ bool NotificationInstance::updateInstance(const string& name,
 			          a != assets.end(); )
 			{
 				lock_guard<mutex> guard(instances->m_instancesMutex);
-				subscriptions->removeSubscription((*a).getAssetName(),
+				subscriptions->removeSubscription(a->getSource(),
+						       		  a->getAssetName(),
 								  ruleName);
 				// Remove asseet
 				a = assets.erase(a);
@@ -2009,8 +2013,9 @@ bool NotificationManager::APIdeleteInstance(const string& instanceName)
 			for (auto a = assets.begin();
 			     a != assets.end(); )
 			{
-				subscriptions->removeSubscription((*a).getAssetName(),
-								   ruleName);
+				subscriptions->removeSubscription(a->getSource(),
+								  a->getAssetName(),
+								  ruleName);
 				// Remove asseet
 				a = assets.erase(a);
 			}

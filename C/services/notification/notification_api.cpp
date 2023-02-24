@@ -26,6 +26,22 @@ using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 /**
  * Wrapper function for the notification POST callback API call used for audit events.
  *
+ * POST /notification/reading/statisticRate/{statistic}
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void notificationStatsRateReceiveWrapper(shared_ptr<HttpServer::Response> response,
+				shared_ptr<HttpServer::Request> request)
+{
+	Logger::getLogger()->debug("Statistics rate callback received");
+	NotificationApi* api = NotificationApi::getInstance();
+	api->processStatsRateCallback(response, request);
+}
+
+/**
+ * Wrapper function for the notification POST callback API call used for audit events.
+ *
  * POST /notification/reading/statistic/{statistic}
  *
  * @param response	The response stream to send the response on
@@ -34,6 +50,7 @@ using HttpClient = SimpleWeb::Client<SimpleWeb::HTTP>;
 void notificationStatsReceiveWrapper(shared_ptr<HttpServer::Response> response,
 				shared_ptr<HttpServer::Request> request)
 {
+	Logger::getLogger()->debug("Statistics callback received");
 	NotificationApi* api = NotificationApi::getInstance();
 	api->processStatsCallback(response, request);
 }
@@ -49,6 +66,7 @@ void notificationStatsReceiveWrapper(shared_ptr<HttpServer::Response> response,
 void notificationAuditReceiveWrapper(shared_ptr<HttpServer::Response> response,
 				shared_ptr<HttpServer::Request> request)
 {
+	Logger::getLogger()->debug("Audit callback received");
 	NotificationApi* api = NotificationApi::getInstance();
 	api->processAuditCallback(response, request);
 }
@@ -308,6 +326,7 @@ void NotificationApi::initResources()
 	m_server->resource[RECEIVE_NOTIFICATION]["POST"] = notificationReceiveWrapper;
 	m_server->resource[RECEIVE_AUDIT_NOTIFICATION]["POST"] = notificationAuditReceiveWrapper;
 	m_server->resource[RECEIVE_STATS_NOTIFICATION]["POST"] = notificationStatsReceiveWrapper;
+	m_server->resource[RECEIVE_STATS_RATE_NOTIFICATION]["POST"] = notificationStatsRateReceiveWrapper;
 	m_server->resource[GET_NOTIFICATION_INSTANCES]["GET"] = notificationGetInstances;
 	m_server->resource[GET_NOTIFICATION_RULES]["GET"] = notificationGetRules;
 	m_server->resource[GET_NOTIFICATION_DELIVERY]["GET"] = notificationGetDelivery;
@@ -325,7 +344,7 @@ void NotificationApi::initResources()
 }
 
 /**
- * Handle a exception by sendign back an internal error
+ * Handle a exception by sending back an internal error
  *
   *
  * @param response	The response stream to send the response on.
@@ -483,9 +502,50 @@ void NotificationApi::processStatsCallback(shared_ptr<HttpServer::Response> resp
 		string statistic = urlDecode(request->path_match[AUDIT_CODE_COMPONENT]);
 		string payload = request->content.string();
 		string responsePayload;
-
 		// Add data to the queue
 		if (queueStatsNotification(statistic, payload))
+		{
+			responsePayload = "{ \"response\" : \"processed\", \"";
+			responsePayload += statistic;
+			responsePayload += "\" : \"data queued\" }";
+
+			this->respond(response, responsePayload);
+		}
+		else
+		{
+			responsePayload = "{ \"error\": \"error_message\" }";
+			this->respond(response,
+				      SimpleWeb::StatusCode::client_error_bad_request,
+				      responsePayload);
+		}
+	}
+	catch (exception ex)
+	{
+		this->internalError(response, ex);
+	}
+}
+
+/**
+ * Add data provided in the statistics rate payload of callback API call
+ * into the notification queue.
+ * 
+ * This is called by the storage service when new data arrives
+ * for an asset in which we have registered an interest.
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void NotificationApi::processStatsRateCallback(shared_ptr<HttpServer::Response> response,
+				      shared_ptr<HttpServer::Request> request)
+{
+	try
+	{
+		// URL decode statistic
+		string statistic = urlDecode(request->path_match[AUDIT_CODE_COMPONENT]);
+		string payload = request->content.string();
+		string responsePayload;
+		// Add data to the queue
+		if (queueStatsRateNotification(statistic, payload))
 		{
 			responsePayload = "{ \"response\" : \"processed\", \"";
 			responsePayload += statistic;
@@ -541,8 +601,7 @@ bool NotificationApi::queueNotification(const string& assetName,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(assetName, readings);
-
+	NotificationQueueElement* item =  new NotificationQueueElement("asset", assetName, readings);
 	// Add element to the queue
 	return queue->addElement(item);
 }
@@ -584,7 +643,7 @@ bool NotificationApi::queueAuditNotification(const string& auditCode,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(auditCode, readings);
+	NotificationQueueElement* item =  new NotificationQueueElement("audit", auditCode, readings);
 
 	// Add element to the queue
 	return queue->addElement(item);
@@ -629,7 +688,52 @@ bool NotificationApi::queueStatsNotification(const string& statistic,
 	}
 
 	NotificationQueue* queue = NotificationQueue::getInstance();
-	NotificationQueueElement* item =  new NotificationQueueElement(statistic, readings);
+	NotificationQueueElement* item =  new NotificationQueueElement("stat", statistic, readings);
+
+	// Add element to the queue
+	return queue->addElement(item);
+}
+
+/**
+ * Add stats rate data of asset name into the process queue
+ *
+ * @param statistic	The statistic name
+ * @param payload	The data for the audit code
+ * @return		false error, true on success
+ */
+bool NotificationApi::queueStatsRateNotification(const string& statistic,
+					const string& payload)
+{
+	Logger::getLogger()->debug("Recieved statisitics rate notification for statistic %s", statistic.c_str());
+
+	Reading *reading = new Reading(statistic, payload);
+	vector<Reading *> readingVec;
+	readingVec.push_back(reading);
+	ReadingSet* readings = NULL;
+	try
+	{
+		readings = new ReadingSet(&readingVec);
+	}
+	catch (exception* ex)
+	{
+		m_logger->error("Exception '" + string(ex->what()) + \
+				"' while parsing readings for statistic '" + \
+				statistic + "' with payload " + payload);
+		delete ex;
+		return false;
+	}
+	catch (...)
+	{
+		std::exception_ptr p = std::current_exception();
+		string name = (p ? p.__cxa_exception_type()->name() : "null");
+		m_logger->error("Exception '" + name + \
+				"' while parsing readings for audit code '" + \
+				statistic  + "'" );
+		return false;
+	}
+
+	NotificationQueue* queue = NotificationQueue::getInstance();
+	NotificationQueueElement* item =  new NotificationQueueElement("rate", statistic, readings);
 
 	// Add element to the queue
 	return queue->addElement(item);
@@ -765,6 +869,7 @@ void NotificationApi::setCallBackURL()
 	m_logger->debug("Notification service: callBackURL prefix is " + m_callBackURL);
 	m_auditCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/audit/";
 	m_statsCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/stat/";
+	m_statsRateCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/rate/";
 }
 
 /**
