@@ -184,7 +184,7 @@ bool StatsSubscriptionElement::registerSubscription(StorageClient& storage) cons
 bool StatsSubscriptionElement::unregister(StorageClient& storage) const
 {
 	NotificationApi *api = NotificationApi::getInstance();
-	string callBackURL = api->getStatsRateCallbackURL();
+	string callBackURL = api->getStatsCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
 	return storage.unregisterTableNotification("statistics", "key", keyValues, "update", callBackURL + urlEncode(m_stat));
@@ -217,7 +217,7 @@ StatsRateSubscriptionElement::~StatsRateSubscriptionElement()
 bool StatsRateSubscriptionElement::registerSubscription(StorageClient& storage) const
 {
 	NotificationApi *api = NotificationApi::getInstance();
-	string callBackURL = api->getStatsCallbackURL();
+	string callBackURL = api->getStatsRateCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
 	return storage.registerTableNotification("statistics_history", "key", keyValues, "insert", callBackURL + urlEncode(m_stat));
@@ -232,7 +232,7 @@ bool StatsRateSubscriptionElement::registerSubscription(StorageClient& storage) 
 bool StatsRateSubscriptionElement::unregister(StorageClient& storage) const
 {
 	NotificationApi *api = NotificationApi::getInstance();
-	string callBackURL = api->getStatsCallbackURL();
+	string callBackURL = api->getStatsRateCallbackURL();
 	vector<std::string> keyValues;
 	keyValues.push_back(m_stat);
 	return storage.unregisterTableNotification("statistics_history", "key", keyValues, "insert", callBackURL + urlEncode(m_stat));
@@ -281,10 +281,19 @@ void NotificationSubscription::unregisterSubscriptions()
 	{
 		// Unregister interest
 		if (it->second.size() && it->second[0])
-			it->second[0]->unregister(m_storage);
-		m_logger->info("Unregistering asset '" + \
-			       (*it).first + "' for notification " + \
-			       this->getNotificationName());
+		{
+			if (it->second[0]->unregister(m_storage))
+			{
+				m_logger->info("Unregistered '%s' for notification %s",
+					       it->second[0]->getKey().c_str(),
+					       this->getNotificationName().c_str());
+			}
+			else
+			{
+				m_logger->warn("Failed to unregister subscription '%s' from the storage subsystem",
+						it->second[0]->getKey().c_str());
+			}
+		}
 	}
 	m_subscriptionMutex.unlock();
 }
@@ -426,11 +435,6 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 	// Get RulePlugin
 	RulePlugin* rulePluginInstance = instance->getRulePlugin();
 	
-	bool registerTableNotification = false;
-	if (rulePluginInstance->getName() == "DataAvailability") 
-	{
-		registerTableNotification = true;
-	}
 	// Get DeliveryPlugin
 	DeliveryPlugin* deliveryPluginInstance = instance->getDeliveryPlugin();
 
