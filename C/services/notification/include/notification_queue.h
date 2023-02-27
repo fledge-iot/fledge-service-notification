@@ -49,12 +49,13 @@ class NotificationDataElement
 class NotificationQueueElement
 {
 	public:
-		NotificationQueueElement(const std::string& assetName,
+		NotificationQueueElement(const std::string& source, const std::string& assetName,
 					 ReadingSet* data);
 
 		~NotificationQueueElement();
 
 		const std::string&	getAssetName() { return m_assetName; };
+		std::string		getKey() { return m_source + "::"  + m_assetName; };
 		ReadingSet*		getAssetData() { return m_readings; };
 		void			queuedTimeCheck()
 					{
@@ -77,6 +78,7 @@ class NotificationQueueElement
 					};
 
 	private:
+		std::string		m_source;
 		std::string		m_assetName;
 		ReadingSet*		m_readings;
 		time_t			m_qTime;
@@ -108,7 +110,7 @@ class NotificationQueue
 	private:
 		void			processDataSet(NotificationQueueElement* data);
 		bool			feedAllDataBuffers(NotificationQueueElement* data);
-		void			processAllDataBuffers(const std::string& assetName);
+		void			processAllDataBuffers(const std::string& key, const std::string& assetName);
 		bool			feedDataBuffer(const std::string& ruleName,
 						       const std::string& assetName,
 						       ReadingSet* assetData);
