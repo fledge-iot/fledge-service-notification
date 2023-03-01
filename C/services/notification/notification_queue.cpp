@@ -1485,8 +1485,10 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 					}
 				}
 
-				// Set output string
-				ret[(*m).first] = content;
+				// Set output string for the given datapoint
+				if (content.length()) {
+					ret[(*m).first] = content;
+				}
 			}
 			break;
 
