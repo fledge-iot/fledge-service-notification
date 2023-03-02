@@ -30,10 +30,17 @@
 
 using namespace std;
 
-extern "C" {
-void ingestCB(NotificationService *service, Reading *reading)
+struct AssetTrackInfo
 {
-	service->ingestReading(*reading);
+	NotificationService* service;
+	std::string notificationInstanceName;
+	std::string pluginName;
+};
+
+extern "C" {
+void ingestCB(AssetTrackInfo *info, Reading *reading)
+{
+	info->service->ingestReading(*reading, info->notificationInstanceName.c_str(), info->pluginName.c_str());
 }
 NotificationService *getService(NotificationService *service)
 {
@@ -1394,7 +1401,23 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 			// Check and set registerIngest
 			if (deliver->ingestData())
 			{
-				deliver->registerIngest((void *)ingestCB, (void *)m_service);
+				
+				AssetTrackInfo* trackingInfo = new AssetTrackInfo;
+				trackingInfo->service = m_service;
+				trackingInfo->notificationInstanceName = notificationName;
+				trackingInfo->pluginName = deliver->getName();
+				std::vector<AssetTrackingTuple*>& vec = m_managerClient->getAssetTrackingTuples(notificationName);
+				
+				for (AssetTrackingTuple* &rec : vec)
+				{
+					if (rec->m_eventName == "Notify")
+					{
+						m_service->updateAssetTrackerCache(*rec);
+					}
+				}
+				deliver->registerIngest((void *)ingestCB, (void *)trackingInfo);
+				
+				
 			}
 
 			// Check and set the NotificationService class
@@ -1497,7 +1520,11 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 			// Check and set registerIngest
 			if (deliver->ingestData())
 			{
-				deliver->registerIngest((void *)ingestCB, (void *)m_service);
+				AssetTrackInfo* trackingInfo  = new AssetTrackInfo;
+				trackingInfo->service = m_service;
+				trackingInfo->notificationInstanceName = notificationName;
+				trackingInfo->pluginName = deliver->getName();
+				deliver->registerIngest((void *)ingestCB, (void *)trackingInfo);
 			}
 
 			// Check and set the NotificationService class

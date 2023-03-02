@@ -439,6 +439,7 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 					   elem->getData()->getNotificationName(),
 					   elem->getData()->getReason(),
 					   elem->getData()->getMessage());
+				   
 	}
 #ifdef DEBUG_DELIVERY_QUEUE
 	else

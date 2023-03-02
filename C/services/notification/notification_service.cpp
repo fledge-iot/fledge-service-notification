@@ -79,6 +79,7 @@ NotificationService::~NotificationService()
 	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
+	delete m_assetTracker;
 }
 
 /**
@@ -132,7 +133,10 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
-
+  
+	// Create the Asset Tracker
+	m_assetTracker = new AssetTracker(m_mgtClient, m_name);
+	
 	// Create the AuditLogger
 	AuditLogger *audit = new AuditLogger(m_mgtClient);
 
