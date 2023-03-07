@@ -18,17 +18,10 @@
  */
 static const char *default_config = QUOTE({
 			"plugin": {
-				"description": "Generate a notification when datapoint value crosses a boundary.",
+				"description": "Generates a notification when an asset datapoint value, statistics count or statistics rate crosses a boundary.",
 				"type": "string",
 				"default": RULE_NAME,
 				"displayName" : "Plugin",
-				"readonly": "true"
-				},
-			"description": {
-				"description": "Generate a notification when datapoint value crosses a boundary.",
-				"type": "string",
-				"default": "Generate a notification if the value of a configured datapoint within an asset name exceeds a configured value.",
-				"displayName" : "Rule",
 				"readonly": "true"
 				},
 			"source" : {
