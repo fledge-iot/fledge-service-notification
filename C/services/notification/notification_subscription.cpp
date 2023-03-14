@@ -91,7 +91,7 @@ bool AssetSubscriptionElement::unregister(StorageClient& storage) const
 	NotificationApi *api = NotificationApi::getInstance();
 	string callBackURL = api->getCallBackURL();
 	string asset = m_asset;
-	return storage.unregisterAssetNotification(m_name, callBackURL + urlEncode(asset));
+	return storage.unregisterAssetNotification(asset, callBackURL + urlEncode(asset));
 }
 
 /**
