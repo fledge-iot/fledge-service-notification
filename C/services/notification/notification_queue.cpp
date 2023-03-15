@@ -1452,30 +1452,28 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 					else
 					{
 						// Calculate AVG
-						long lVal;
 						double dVal;
 						// Check for INT or FLOAT
 						switch(v->getData().getType())
 						{
 							case DatapointValue::T_INTEGER:
-							lVal = v->getData().toInt();
-							// Set output string
-							content.append(to_string(lVal / (double)readingsDone));
-							break;
+								dVal = v->getData().toInt();
+								// Set output string
+								content.append(to_string((double)dVal/readingsDone));
+								break;
 
-						case DatapointValue::T_FLOAT:
-							dVal = v->getData().toDouble();
-							// Set output string
-							content.append(to_string(dVal / (double)readingsDone));
-							break;
+							case DatapointValue::T_FLOAT:
+								dVal = v->getData().toDouble();
+								// Set output string
+								content.append(to_string((double)dVal/readingsDone));
+								break;
 
-						case DatapointValue::T_FLOAT_ARRAY:
-						case DatapointValue::T_STRING:
-						default:
-							// Do nothing right now
-							break;
+							case DatapointValue::T_FLOAT_ARRAY:
+							case DatapointValue::T_STRING:
+							default:
+								// Do nothing right now
+								break;
 						}
-
 					}
 
 					if (type != EvaluationType::All)
