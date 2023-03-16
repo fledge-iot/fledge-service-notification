@@ -1246,11 +1246,6 @@ static void sendNotification(
 		// Add data object to the queue
 		DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
 		dQueue->addElement(queueElement);
-
-		// Audit log
-		instances->auditNotification(instance->getName(), reason);
-		// Update sent notification statistics
-		instances->updateSentStats();
 	}
 
 }
