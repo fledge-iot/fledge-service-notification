@@ -435,11 +435,30 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 	if (elem->getPlugin())
 	{
 		// Call plugin_deliver
-		elem->getPlugin()->deliver(elem->getName(),
+		std::string reason = elem->getData()->getReason();
+		bool deliverSuccessFlag =  elem->getPlugin()->deliver(elem->getName(),
 					   elem->getData()->getNotificationName(),
-					   elem->getData()->getReason(),
+					   reason,
 					   elem->getData()->getMessage());
-				   
+
+		std::string instanceName;
+                const NotificationInstance* nInstance = elem->getData()->getInstance();
+                if (nInstance != nullptr)
+                {
+                        instanceName = nInstance->getName();
+                }
+		if (deliverSuccessFlag)
+		{
+			// Audit log
+			instances->auditNotification(instanceName, reason);
+			// Update sent notification statistics
+			instances->updateSentStats();
+		}
+		else
+                {
+                         m_logger->warn("Failed to deliver the notification! Notification instance %s %s could not notify for %s", instanceName.c_str(), elem->getName().c_str(), reason.c_str());
+                }
+
 	}
 #ifdef DEBUG_DELIVERY_QUEUE
 	else
