@@ -435,9 +435,10 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 	if (elem->getPlugin())
 	{
 		// Call plugin_deliver
+		std::string reason = elem->getData()->getReason();
 		bool deliverSuccessFlag =  elem->getPlugin()->deliver(elem->getName(),
 					   elem->getData()->getNotificationName(),
-					   elem->getData()->getReason(),
+					   reason,
 					   elem->getData()->getMessage());
 
 		std::string instanceName;
@@ -446,7 +447,6 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
                 {
                         instanceName = nInstance->getName();
                 }
-                std::string reason = elem->getData()->getReason();
 		if (deliverSuccessFlag)
 		{
 			// Audit log
@@ -456,7 +456,7 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 		}
 		else
                 {
-                         m_logger->debug("Delivery plugin returned failure on notify, Could not add audit Log for instanceName %s, and reason %s", instanceName.c_str(), reason.c_str());
+                         m_logger->warn("Delivery plugin returned failure on notify, Could not add audit Log for instanceName %s, and reason %s", instanceName.c_str(), reason.c_str());
                 }
 
 	}
