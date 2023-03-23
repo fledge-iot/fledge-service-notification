@@ -456,7 +456,7 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 		}
 		else
                 {
-                         m_logger->warn("Failed to deliver the notification! Notification instance %s, plugin_deliver %s, could not notify for %s", instanceName.c_str(), elem->getName().c_str(), reason.c_str());
+                         m_logger->warn("Failed to deliver the notification! Notification instance %s %s could not notify for %s", instanceName.c_str(), elem->getName().c_str(), reason.c_str());
                 }
 
 	}
