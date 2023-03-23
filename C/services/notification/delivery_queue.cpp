@@ -456,7 +456,7 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 		}
 		else
                 {
-                         m_logger->warn("Delivery plugin returned failure on notify, Could not add audit Log for instanceName %s, and reason %s", instanceName.c_str(), reason.c_str());
+                         m_logger->warn("Failed to deliver the notification! Notification instance %s, plugin_deliver %s, could not notify for %s", instanceName.c_str(), elem->getName().c_str(), reason.c_str());
                 }
 
 	}
