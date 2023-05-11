@@ -291,6 +291,8 @@ void DataAvailabilityRule::configure(const ConfigCategory &config)
 		handle->removeTriggers();
 	}
 
+	m_assetCodeList.clear();
+	m_auditCodeList.clear();
 	char filter = ',';
 	string::size_type i = 0;
 	string::size_type j = auditCode.find(filter);
