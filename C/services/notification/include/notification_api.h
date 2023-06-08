@@ -20,10 +20,10 @@ using HttpServer = SimpleWeb::Server<SimpleWeb::HTTP>;
  * URL for each API entry point
  */
 #define ESCAPE_SPECIAL_CHARS		"\\{\\}\\\"\\(\\)\\!\\[\\]\\^\\$\\.\\|\\?\\*\\+\\-"
-#define RECEIVE_NOTIFICATION		"^/notification/reading/asset/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
+#define RECEIVE_NOTIFICATION		"^/notification/reading/asset/([A-Za-z0-9][a-zA-Z0-9_%\\-\\.]*)$"
 #define RECEIVE_AUDIT_NOTIFICATION	"^/notification/reading/audit/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
-#define RECEIVE_STATS_NOTIFICATION	"^/notification/reading/stat/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
-#define RECEIVE_STATS_RATE_NOTIFICATION	"^/notification/reading/rate/([A-Za-z][a-zA-Z0-9_%\\-\\.]*)$"
+#define RECEIVE_STATS_NOTIFICATION	"^/notification/reading/stat/([A-Za-z0-9][a-zA-Z0-9_%\\-\\.]*)$"
+#define RECEIVE_STATS_RATE_NOTIFICATION	"^/notification/reading/rate/([A-Za-z0-9][a-zA-Z0-9_%\\-\\.]*)$"
 #define GET_NOTIFICATION_INSTANCES	"^/notification$"
 #define GET_NOTIFICATION_DELIVERY	"^/notification/delivery$"
 #define GET_NOTIFICATION_RULES		"^/notification/rules$"
