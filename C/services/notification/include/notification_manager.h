@@ -16,6 +16,7 @@
 #include <delivery_plugin.h>
 #include <notification_service.h>
 #include <notification_stats.h>
+#include <asset_tracking.h>
 
 // Notification type repeat time
 #define DEFAULT_RETRIGGER_TIME 60
@@ -64,7 +65,8 @@ class EvaluationType
 class NotificationDetail
 {
 	public:
-		NotificationDetail(const std::string& asset,
+		NotificationDetail(const std::string& source,
+				   const std::string& asset,
 				   const std::string& rule,
 				   EvaluationType& value);
 		~NotificationDetail();
@@ -74,11 +76,14 @@ class NotificationDetail
 		const EvaluationType::EVAL_TYPE
 					getType() const { return m_value.getType(); };
 		const time_t		getInterval() const { return m_value.getInterval(); };
+		const std::string	getKey() { return m_source + "::" + m_asset; };
+		const std::string	getSource() { return m_source; };
 
 	private:
 		std::string		m_asset;
 		std::string		m_rule;
 		EvaluationType		m_value;
+		std::string		m_source;
 };
 
 /**
@@ -129,18 +134,21 @@ class NotificationRule : public NotificationElement
 					getAssets() { return m_assets; };
 		// Add an asset name
 		void			addAsset(NotificationDetail& info)
-		{
-			m_assets.push_back(info);
-		};
+					{
+						m_assets.push_back(info);
+					};
 		std::string		toJSON();
 		bool			isTimeBased() { return m_timeBased != 0; };
-		void			setTimeBased(uint64_t timeBased) {
+		void			setTimeBased(uint64_t timeBased) 
+					{
 						m_timeBased = timeBased;
-		};
-		bool			evaluateAny() {
+					};
+		bool			evaluateAny()
+					{
 						return m_multiple_evaluaion == MULTIPLE_EVALUATION::M_ANY;
 					};
-		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval) {
+		void			setMultipleEvaluation(MULTIPLE_EVALUATION eval)
+					{
 						m_multiple_evaluaion = eval;
 					};
 

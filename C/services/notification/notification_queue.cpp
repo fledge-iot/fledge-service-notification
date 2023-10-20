@@ -102,8 +102,9 @@ NotificationDataElement::~NotificationDataElement()
  * @param    assetName	The assetName which gets ntotification data
  * @param    data	The readings data pointer
  */
-NotificationQueueElement::NotificationQueueElement(const string& assetName,
+NotificationQueueElement::NotificationQueueElement(const string& source, const string& assetName,
 						   ReadingSet* data) :
+						   m_source(source),
 						   m_assetName(assetName),
 						   m_readings(data)
 {
@@ -195,7 +196,7 @@ void NotificationQueue::stop()
 	// so we don't need to lock subscriptions object
 	//
         // Get all subscriptions for assetName
-	std::map<std::string, std::vector<SubscriptionElement>>&
+	std::map<std::string, std::vector<SubscriptionElement *>>&
 		registeredItems = subscriptions->getAllSubscriptions();
 
 	lock_guard<mutex> guard(manager->m_instancesMutex);
@@ -209,7 +210,7 @@ void NotificationQueue::stop()
 			  ++s)
 		{
 			// Get notification rule object
-			string notificationName = (*s).getNotificationName();
+			string notificationName = (*s)->getNotificationName();
 			NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 
 			// Get ruleName
@@ -334,12 +335,11 @@ void NotificationQueue::processDataSet(NotificationQueueElement* data)
 	 * (1) Add data to each data buffer[ruleName] related to this assetName
 	 * (2) For each ruleName related to assetName process data in buffer[ruleName]
 	 */
-
 	// (1) feed all rule buffers
 	if (this->feedAllDataBuffers(data))
 	{
 		// (2) process all data in all rule buffers for given assetName
-		this->processAllDataBuffers(data->getAssetName());
+		this->processAllDataBuffers(data->getKey(), data->getAssetName());
 	}
 }
 
@@ -372,8 +372,8 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 	NotificationManager* manager = NotificationManager::getInstance();
 
 	subscriptions->lockSubscriptions();
-	std::vector<SubscriptionElement>&
-		subscriptionItems = subscriptions->getSubscription(assetName);
+	std::vector<SubscriptionElement *>&
+		subscriptionItems = subscriptions->getSubscription(data->getKey());
 
 	for (auto it = subscriptionItems.begin();
 		  it != subscriptionItems.end();
@@ -382,7 +382,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 		lock_guard<mutex> guard(manager->m_instancesMutex);
 
 		// Get notification instance name
-		string notificationName = (*it).getNotificationName();
+		string notificationName = (*it)->getNotificationName();
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
 		
@@ -693,21 +693,23 @@ void NotificationQueue::evalRule(map<string, AssetData>& results,
  * (3) If a notification is ready, call rule plugin_eval
  *     and delivery plugin_deliver (if notification has to be sent)
  *
+ * @param    key		The subscription key
  * @param    assetName		Current assetName
  *				that is receiving notifications data
  */
-void NotificationQueue::processAllDataBuffers(const string& assetName)
+void NotificationQueue::processAllDataBuffers(const string& key, const string& assetName)
 {
 	// Get the subscriptions instance
 	NotificationSubscription* subscriptions = NotificationSubscription::getInstance();
 	if (!subscriptions)
 	{
+		Logger::getLogger()->error("Internal error, unable to find the subscriptions for notification data");
 		return;
 	}
 	// Get all subscriptions for assetName
 	subscriptions->lockSubscriptions();
-	std::vector<SubscriptionElement>&
-		registeredItems = subscriptions->getSubscription(assetName);
+	std::vector<SubscriptionElement *>&
+		registeredItems = subscriptions->getSubscription(key);
 
 	// Get NotificationManager instance
 	NotificationManager* manager = NotificationManager::getInstance();
@@ -723,18 +725,19 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		map<string, AssetData> results;
 
 		// Get notification instance name
-		string notificationName = (*it).getNotificationName();
+		string notificationName = (*it)->getNotificationName();
 		// Get instance pointer
 		NotificationInstance* instance = manager->getNotificationInstance(notificationName);
+		string instanceName = instance->getName();
 
 		// Check wether the instance exists and it is enabled
 		if (!instance ||
 		    !instance->getRule() ||
 		    !instance->isEnabled())
 		{
-			Logger::getLogger()->debug("Skipping instance for asset %s in notification %s",
-						   assetName.c_str(),
-						   (*it).getNotificationName().c_str());
+			Logger::getLogger()->debug("Skipping notification %s for %s, notification %s",
+					   instanceName.c_str(), assetName.c_str(),
+					   (instance->isEnabled() ? "has no rule" : "is not enabled"));
 			// Skip this instance
 			continue;
 		}
@@ -761,7 +764,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 			// Process data buffer and fill results
 			this->processDataBuffer(results,
 						ruleName,
-						(*itr).getAssetName(),
+						itr->getAssetName(),
 						*itr);
 		}
 
@@ -771,7 +774,7 @@ void NotificationQueue::processAllDataBuffers(const string& assetName)
 		    (results.size() > 0 && instance->getRule()->evaluateAny()))
 		{
 			// Notification data ready: eval data and sent notification
-			this->sendNotification(results, *it);
+			this->sendNotification(results, **it);
 		}
 	}
 	subscriptions->unlockSubscriptions();
@@ -1243,11 +1246,6 @@ static void sendNotification(
 		// Add data object to the queue
 		DeliveryQueueElement* queueElement = new DeliveryQueueElement(deliveryData);
 		dQueue->addElement(queueElement);
-
-		// Audit log
-		instances->auditNotification(instance->getName(), reason);
-		// Update sent notification statistics
-		instances->updateSentStats();
 	}
 
 }
@@ -1449,30 +1447,28 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 					else
 					{
 						// Calculate AVG
-						long lVal;
 						double dVal;
 						// Check for INT or FLOAT
 						switch(v->getData().getType())
 						{
 							case DatapointValue::T_INTEGER:
-							lVal = v->getData().toInt();
-							// Set output string
-							content.append(to_string(lVal / (double)readingsDone));
-							break;
+								dVal = v->getData().toInt();
+								// Set output string
+								content.append(to_string((double)dVal/readingsDone));
+								break;
 
-						case DatapointValue::T_FLOAT:
-							dVal = v->getData().toDouble();
-							// Set output string
-							content.append(to_string(dVal / (double)readingsDone));
-							break;
+							case DatapointValue::T_FLOAT:
+								dVal = v->getData().toDouble();
+								// Set output string
+								content.append(to_string((double)dVal/readingsDone));
+								break;
 
-						case DatapointValue::T_FLOAT_ARRAY:
-						case DatapointValue::T_STRING:
-						default:
-							// Do nothing right now
-							break;
+							case DatapointValue::T_FLOAT_ARRAY:
+							case DatapointValue::T_STRING:
+							default:
+								// Do nothing right now
+								break;
 						}
-
 					}
 
 					if (type != EvaluationType::All)
@@ -1482,8 +1478,10 @@ void NotificationQueue::aggregateData(vector<NotificationDataElement *>& reading
 					}
 				}
 
-				// Set output string
-				ret[(*m).first] = content;
+				// Set output string for the given datapoint
+				if (content.length()) {
+					ret[(*m).first] = content;
+				}
 			}
 			break;
 
@@ -1736,8 +1734,9 @@ void NotificationQueue::processTime()
 			    !instance->getRule() ||
 			    !instance->isEnabled())
 			{
-				Logger::getLogger()->debug("Skipping notification %s",
-					   instanceName.c_str());
+				Logger::getLogger()->debug("Skipping notification %s, notification %s",
+					   instanceName.c_str(),
+					   (instance->isEnabled() ? "has no rule" : "is not enabled"));
 
 				// Instance data and timers found
 				// but instance object not available or not actve:
@@ -1785,7 +1784,7 @@ void NotificationQueue::processTime()
 					// Process data buffer and fill results
 					this->processDataBuffer(results,
 								ruleName,
-								(*itr).getAssetName(),
+								itr->getAssetName(),
 								*itr);
 
 					// Add new reading

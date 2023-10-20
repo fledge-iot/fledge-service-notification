@@ -137,7 +137,6 @@ void DeliveryPlugin::reconfigure(const string& newConfig)
 	{
 		ConfigCategory reconfig("new_cfg", newConfig);
 		this->setEnabled(reconfig);
-
 		return this->pluginReconfigurePtr(m_instance, newConfig);
 	}
 }

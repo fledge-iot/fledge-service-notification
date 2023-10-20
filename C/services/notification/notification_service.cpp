@@ -24,6 +24,7 @@
 #include <notification_queue.h>
 #include <notification_subscription.h>
 #include <delivery_queue.h>
+#include <audit_logger.h>
 
 using namespace std;
 
@@ -78,6 +79,7 @@ NotificationService::~NotificationService()
 	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
+	delete m_assetTracker;
 }
 
 /**
@@ -131,6 +133,12 @@ bool NotificationService::start(string& coreAddress,
 		this->cleanupResources();
 		return false;
 	}
+  
+	// Create the Asset Tracker
+	m_assetTracker = new AssetTracker(m_mgtClient, m_name);
+	
+	// Create the AuditLogger
+	AuditLogger *audit = new AuditLogger(m_mgtClient);
 
 	// Create an empty Notification category if one doesn't exist
 	DefaultConfigCategory notificationConfig(string("Notifications"), string("{}"));
@@ -298,6 +306,10 @@ bool NotificationService::start(string& coreAddress,
 	}
 	else if (m_removeFromCore)
 	{
+		// We need to do this before unregistering
+		m_mgtClient->addAuditEntry("NTFSD",
+					"INFORMATION",
+					"{\"name\": \"" + m_name + "\"}");
 		// Unregister from Fledge
 		m_mgtClient->unregisterService();
 	}
@@ -311,9 +323,6 @@ bool NotificationService::start(string& coreAddress,
 
 	m_logger->info("Notification service '" + m_name + "' shutdown completed.");
 
-	m_mgtClient->addAuditEntry("NTFSD",
-					"INFORMATION",
-					"{\"name\": \"" + m_name + "\"}");
 
 	return true;
 }
@@ -547,7 +556,7 @@ void NotificationService::configChange(const string& categoryName,
 					  a != allAssets.end(); )
 				{
 					// Remove assetName/ruleName from subscriptions
-					subscriptions->removeSubscription((*a).getAssetName(),
+					subscriptions->removeSubscription(a->getSource(), a->getAssetName(),
 									  ruleName);
 					// Remove asseet
 					a = allAssets.erase(a);
