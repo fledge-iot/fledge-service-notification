@@ -152,7 +152,7 @@ NotificationDelivery::~NotificationDelivery()
 
 	// Create data object for delivery queue
 	// with no reason, no message and notifcation instance set to NULL
-	// This elemet added to delivery queue will signal the need of stutting down
+	// This element added to delivery queue will signal the need of shutting down
 	// the DeliveryPlugin after processing all data for this Delivery
 	DeliveryDataElement* deliveryData =
 		new DeliveryDataElement(
@@ -335,7 +335,7 @@ NotificationManager::NotificationManager(const std::string& serviceName,
 NotificationManager::~NotificationManager()
 {
 	lock_guard<mutex> guard(m_instancesMutex);
-	// Mark is instance as zombie
+	// Mark this instance as zombie
         for (auto it = m_instances.begin();
 		  it != m_instances.end();
 		  ++it)
@@ -562,7 +562,7 @@ PLUGIN_HANDLE NotificationManager::loadRulePlugin(const string& rulePluginName)
 	if ((handle = manager->loadPlugin(rulePluginName,
 					  PLUGIN_TYPE_NOTIFICATION_RULE)) != NULL)
 	{
-		// Suceess
+		// Success
 		m_logger->info("Loaded rule plugin '%s'.",
 			       rulePluginName.c_str());
 	}
@@ -595,7 +595,7 @@ PLUGIN_HANDLE NotificationManager::loadDeliveryPlugin(const string& loadDelivery
 	if ((handle = manager->loadPlugin(loadDeliveryPlugin,
 					  PLUGIN_TYPE_NOTIFICATION_DELIVERY)) != NULL)
         {
-		// Suceess
+		// Success
 		m_logger->info("Loaded delivery plugin '%s'.",
 			       loadDeliveryPlugin.c_str());
 	}
@@ -1370,7 +1370,7 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 
 	DeliveryPlugin* deliver = this->createDeliveryCategory(notificationName, deliveryPluginName, false);
 
-	if (rule && deliver)
+	if (rule && deliver && enabled)
 	{
 		// Create category names for plugins under instanceName
 		// Register category interest as well
@@ -1471,11 +1471,11 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 
 
 /**
- * Add an delivery to a notification instance
+ * Add a delivery to a notification instance
  *
  * @param    config		          The configuration for the new instance.
  * @param    deliveryCategoryName The delivery name
- * @param    config	              The configuration ofr the delivery.
+ * @param    config	              The configuration of the delivery.
  * @return			True on success, false otherwise.
  */
 bool NotificationManager::addDelivery(const ConfigCategory& config, const string &deliveryCategoryName, ConfigCategory &deliveryConfig)
@@ -1514,7 +1514,7 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 		NotificationDelivery* theDelivery = NULL;
 
 		// Call delivery "plugin_init" with configuration
-		// and instantiate  NotificationDelivery class
+		// and instantiate NotificationDelivery class
 		if (deliver->init(deliveryConfig))
 		{
 			// Check and set registerIngest
@@ -1667,7 +1667,7 @@ bool NotificationInstance::updateInstance(const string& name,
 					// Create a new subscription
 					subscriptions->createSubscription((*i).second);
 
-					Logger::getLogger()->info("Succesfully enabled notification instance '%s'",
+					Logger::getLogger()->info("Successfully enabled notification instance '%s'",
 								  name.c_str());
 					enabled = true;
 				}
@@ -1716,7 +1716,7 @@ bool NotificationInstance::updateInstance(const string& name,
 		bool ret = instances->setupInstance(name, newConfig);
 		if (ret)
 		{
-			Logger::getLogger()->info("Succesfully disabled notification instance '%s'",
+			Logger::getLogger()->info("Successfully disabled notification instance '%s'",
 						   name.c_str());
 		}
 		else
@@ -1777,7 +1777,7 @@ bool NotificationInstance::updateInstance(const string& name,
 				subscriptions->removeSubscription(a->getSource(),
 						       		  a->getAssetName(),
 								  ruleName);
-				// Remove asseet
+				// Remove asset
 				a = assets.erase(a);
 			}
 		}
@@ -2043,7 +2043,7 @@ bool NotificationManager::APIdeleteInstance(const string& instanceName)
 				subscriptions->removeSubscription(a->getSource(),
 								  a->getAssetName(),
 								  ruleName);
-				// Remove asseet
+				// Remove asset
 				a = assets.erase(a);
 			}
 		}
