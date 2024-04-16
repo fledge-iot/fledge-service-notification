@@ -260,6 +260,7 @@ bool NotificationService::start(string& coreAddress,
 				    storageInfo.getPort());
 	m_storage = &storageClient;
 
+	m_storage->registerManagement(m_mgtClient);
 
 	// Setup NotificationManager class
 	NotificationManager instances(m_name, m_mgtClient, this);
