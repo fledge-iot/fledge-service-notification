@@ -684,7 +684,7 @@ bool NotificationService::sendToDispatcher(const string& path, const string& pay
 			return false;
 		}
 
-		ServiceRecord service("dispatcher");
+		ServiceRecord service("", "Dispatcher");
 		if (!m_mgtClient->getService(service))
 		{
 			Logger::getLogger()->error("Unable to find dispatcher service 'Dispatcher'");
