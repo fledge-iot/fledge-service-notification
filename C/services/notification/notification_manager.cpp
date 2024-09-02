@@ -993,8 +993,8 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			 "\"displayName\" : \"Enabled\", \"order\" : \"5\","
 			 "\"type\": \"boolean\", \"default\": \"false\"}, " 
 		   "\"retrigger_time\": {\"description\" : \"Retrigger time in seconds for sending a new notification.\", "
-			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", "
-			 "\"type\": \"integer\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\"} }";
+			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", \"minimum\" : \"0\","
+			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\"} }";
 
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
