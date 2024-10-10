@@ -999,7 +999,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			 "\"type\": \"boolean\", \"default\": \"false\"}, " 
 		   "\"retrigger_time\": {\"description\" : \"Retrigger time in seconds for sending a new notification.\", "
 			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", "
-			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.1\"} }";
+			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.0\"} }";
 
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
@@ -1927,7 +1927,7 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	    !config.getValue("retrigger_time").empty())
 	{
 		double new_value = atof(config.getValue("retrigger_time").c_str());
-		if (new_value)
+		if (new_value >= 0)
 		{
 			retriggerTimeTv.tv_sec = (int)new_value;
 			double intPart;
