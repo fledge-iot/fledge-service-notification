@@ -193,7 +193,8 @@ NotificationInstance::NotificationInstance(const string& name,
 					   m_zombie(false)
 {
 	// Set initial state for notification delivery
-	m_lastSent = 0;
+	m_lastSentTv.tv_sec = 0;
+	m_lastSentTv.tv_usec = 0;
 	m_state = NotificationInstance::StateCleared;
 }
 
@@ -772,8 +773,12 @@ bool NotificationInstance::handleState(bool evalRet)
 	bool ret = false;
 	NOTIFICATION_TYPE nType = this->getType();
 
-	time_t now = time(NULL);
-	time_t diffTime = now - m_lastSent;
+	// Get now with seconds and microseconds
+	struct timeval now_tv, diffTimeTv;
+	gettimeofday(&now_tv, NULL);
+
+	// Calculate time diff
+	timersub(&now_tv, &m_lastSentTv, &diffTimeTv);
 
 	switch(nType.type)
 	{
@@ -789,7 +794,7 @@ bool NotificationInstance::handleState(bool evalRet)
 		else
 		{
 			// Try sending "triggered" when evaluation is true
-			ret = evalRet && (diffTime >= nType.retriggerTime);
+			ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
 			// Here state change depends on sending value
 			setTriggered = ret;
 		}
@@ -799,7 +804,7 @@ bool NotificationInstance::handleState(bool evalRet)
 		// Set state depends on evalRet
 		setTriggered = evalRet;
 		// Try sending "triggered" when evaluation is true
-		ret = evalRet && diffTime >= nType.retriggerTime;
+		ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
 		break;
 
 	default:
@@ -820,10 +825,10 @@ bool NotificationInstance::handleState(bool evalRet)
 	if (ret)
 	{
 		// Update last sent time
-		m_lastSent = now;
+		m_lastSentTv = now_tv;
 		char dateStr[80];
 		struct tm tm;
-		time_t tim = now + nType.retriggerTime;
+		time_t tim = now_tv.tv_sec + nType.retriggerTimeTv.tv_usec;
 		asctime_r(localtime_r(&tim, &tm), dateStr);
 		Logger::getLogger()->info("Notification %s will not be sent again until after %s", m_name.c_str(), dateStr);
 	}
@@ -994,7 +999,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			 "\"type\": \"boolean\", \"default\": \"false\"}, " 
 		   "\"retrigger_time\": {\"description\" : \"Retrigger time in seconds for sending a new notification.\", "
 			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", "
-			 "\"type\": \"integer\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\"} }";
+			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.0\"} }";
 
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
@@ -1003,7 +1008,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 	if (m_managerClient->addCategory(notificationConfig, false))
 	{
 		NOTIFICATION_TYPE type;
-		type.retriggerTime = DEFAULT_RETRIGGER_TIME;
+		type.retriggerTimeTv.tv_usec = DEFAULT_RETRIGGER_TIME;
 		type.type = E_NOTIFICATION_TYPE::OneShot;
 		// Create the empty Notification instance
 		this->addInstance(name,
@@ -1906,6 +1911,8 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 						string& customText)
 {
 	long retriggerTime = DEFAULT_RETRIGGER_TIME;
+	struct timeval retriggerTimeTv;
+        retriggerTimeTv.tv_sec = DEFAULT_RETRIGGER_TIME;
 	string notificationName = config.getName();
 	// The rule plugin to use
 	rulePluginName = config.getValue("rule");
@@ -1919,13 +1926,17 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	if (config.itemExists("retrigger_time") &&
 	    !config.getValue("retrigger_time").empty())
 	{
-		long new_value = atol(config.getValue("retrigger_time").c_str());
-		if (new_value)
+		double new_value = atof(config.getValue("retrigger_time").c_str());
+		if (new_value >= 0)
 		{
-			retriggerTime = new_value;
+			retriggerTimeTv.tv_sec = (int)new_value;
+			double intPart;
+			double fractPart;
+			fractPart = modf(new_value, &intPart);
+			retriggerTimeTv.tv_usec = 1000000 * fractPart;
 		}
 	}
-	nType.retriggerTime = retriggerTime;
+	nType.retriggerTimeTv = retriggerTimeTv;
 
 	// Get notification type
 	string notification_type;

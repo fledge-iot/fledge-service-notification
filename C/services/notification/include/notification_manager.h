@@ -19,7 +19,7 @@
 #include <asset_tracking.h>
 
 // Notification type repeat time
-#define DEFAULT_RETRIGGER_TIME 60
+#define DEFAULT_RETRIGGER_TIME 60.0
 
 /**
  * The EvaluationType class represents
@@ -194,7 +194,7 @@ class NotificationInstance
 		struct NotificationType
 		{
 			eNotificationType type;
-			long retriggerTime;
+			struct timeval retriggerTimeTv;
 		};
 		enum NotificationState {StateTriggered, StateCleared };
 		NotificationInstance(const std::string& name,
@@ -260,7 +260,7 @@ class NotificationInstance
 		std::vector<std::pair<std::string, NotificationDelivery *>>
 					m_deliveryExtra;
 
-		time_t			m_lastSent;
+		struct timeval		m_lastSentTv;
 		NotificationState	m_state;
 		bool			m_zombie;
 };
