@@ -15,7 +15,7 @@ EXPECT_EXIT({
 	NotificationInstance* instance = NULL;
 	NOTIFICATION_TYPE nType;
 	nType.type = E_NOTIFICATION_TYPE::Toggled;
-	nType.retriggerTime = DEFAULT_RETRIGGER_TIME;
+	nType.retriggerTimeTv.tv_sec = DEFAULT_RETRIGGER_TIME;
 
 	// NotificationType is TOGGLED
 	instance = new NotificationInstance("Toggled",
