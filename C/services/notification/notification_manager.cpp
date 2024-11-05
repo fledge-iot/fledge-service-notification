@@ -811,7 +811,10 @@ bool NotificationInstance::handleState(bool evalRet)
 		// Set state depends on evalRet
 		setTriggered = evalRet;
 		// Try sending "triggered" when evaluation is true
-		ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
+		if ( ( nType.retriggerTimeTv.tv_sec > 0) && (m_lastSentTv.tv_sec ==  now_tv.tv_sec))
+			ret = false;
+		else
+			ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
 		break;
 
 	default:
