@@ -317,6 +317,9 @@ The final stage of setting up your configuration is to set the notification type
 
 After a period of time, when a *sinusoid* value greater than 0.5 is received,  a message will appear in your *Slack* window.
 
+.. note::
+   In case of statistic history is used a data source; If criteria / retrigger time to generate a notification doesn't match in current stats collection schedule then criteria to generate a notification is checked in the next cycle as per the stats collection schedule. Default stats collection schedule is 15 second.
+
 +---------+
 | |slack| |
 +---------+
