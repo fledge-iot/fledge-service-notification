@@ -780,6 +780,13 @@ bool NotificationInstance::handleState(bool evalRet)
 	// Calculate time diff
 	timersub(&now_tv, &m_lastSentTv, &diffTimeTv);
 
+	// round up the seconds If microseconds are greater than or equal to 500000
+	if (diffTimeTv.tv_usec >= 500000)
+	{
+		diffTimeTv.tv_sec = diffTimeTv.tv_sec + 1;
+		diffTimeTv.tv_usec = 0;
+	}
+
 	switch(nType.type)
 	{
 	case NotificationInstance::OneShot:
@@ -804,7 +811,10 @@ bool NotificationInstance::handleState(bool evalRet)
 		// Set state depends on evalRet
 		setTriggered = evalRet;
 		// Try sending "triggered" when evaluation is true
-		ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
+		if ( ( nType.retriggerTimeTv.tv_sec > 0) && (m_lastSentTv.tv_sec ==  now_tv.tv_sec))
+			ret = false;
+		else
+			ret = evalRet && timercmp(&diffTimeTv, &nType.retriggerTimeTv, >=);
 		break;
 
 	default:
