@@ -1,0 +1,76 @@
+name: Checker
+
+on:
+  push:
+    branches: ['**']
+
+jobs:
+  test:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-22.04, ubuntu-24.04]
+    env:
+      FLEDGE_ROOT: ${{ github.workspace }}/fledge
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Compile Fledge Core
+        id: build_core
+        run: |
+          set -e
+          BRANCH="develop"
+          git clone --single-branch -b "$BRANCH" https://github.com/fledge-iot/fledge.git
+          cd "$FLEDGE_ROOT"
+          sudo ./requirements.sh
+          make -j"$(nproc)"
+
+      - name: Build Service
+        id: build_service
+        if: steps.build_core.outcome == 'success'
+        run: |
+          set -e
+          cd "${{ github.workspace }}"
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j"$(nproc)"
+
+      - name: Run Tests
+        id: check_xml_report
+        if: steps.build_service.outcome == 'success'
+        run: |
+          set +e  # Prevent script from failing on test error
+
+          # Install test requirements
+          "$FLEDGE_ROOT/tests/unit/C/requirements.sh"
+
+          # Run tests
+          cd "${{ github.workspace }}/tests/unit/C/scripts"
+          ./RunAllTests.sh
+
+          # Determine if test report exists
+          if compgen -G "${{ github.workspace }}/tests/unit/C/results/*.xml" > /dev/null; then
+            echo "xml_report_found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "xml_report_found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+          exit 0  # Force step to pass regardless of test result
+
+      # Publish test results to GitHub UI using a third-party action
+      # Note: GitHub Actions does not yet support native test report publishing in the UI
+      # This step uses dorny/test-reporter to visualize test results in the Actions tab
+      - name: Publish Test Report
+        if: steps.check_xml_report.outputs.xml_report_found == 'true'
+        uses: dorny/test-reporter@v1
+        continue-on-error: true
+        with:
+          name: "Test Results on ${{ matrix.os }}"
+          path: "${{ github.workspace }}/tests/unit/C/results/*.xml"
+          reporter: java-junit
+          fail-on-error: true
+
