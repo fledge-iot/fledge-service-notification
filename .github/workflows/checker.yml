@@ -24,6 +24,19 @@ jobs:
           set -e
           BRANCH="develop"
           git clone --single-branch -b "$BRANCH" https://github.com/fledge-iot/fledge.git
+          echo "⚠️ APT is misinterpreting the mirror+file: scheme as a URL 🌐, causing 404 errors ❌ due to a missing or invalid /etc/apt/apt-mirrors.txt file 📄."
+          RELEASE=$(lsb_release -cs)
+          echo "Using release: $RELEASE"
+          cat <<EOF | sudo tee /etc/apt/sources.list
+          deb http://archive.ubuntu.com/ubuntu $RELEASE main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu $RELEASE-updates main restricted universe multiverse
+          deb http://archive.ubuntu.com/ubuntu $RELEASE-backports main restricted universe multiverse
+          deb http://security.ubuntu.com/ubuntu $RELEASE-security main restricted universe multiverse
+          EOF
+          sudo apt-get update
+          sudo apt-get install -y --fix-missing
+
+          echo "🔧 Run setup prerequisites 📦 and compilation of code 🛠️"
           cd "$FLEDGE_ROOT"
           sudo ./requirements.sh
           make -j"$(nproc)"
@@ -33,6 +46,7 @@ jobs:
         if: steps.build_core.outcome == 'success'
         run: |
           set -e
+          echo "⚙️ Run compilation of code ⚡"
           cd "${{ github.workspace }}"
           mkdir -p build
           cd build
@@ -45,10 +59,10 @@ jobs:
         run: |
           set +e  # Prevent script from failing on test error
 
-          # Install test requirements
+          echo "🛠️ Installing test dependencies..."
           "$FLEDGE_ROOT/tests/unit/C/requirements.sh"
 
-          # Run tests
+          echo "📋 Running tests..."
           cd "${{ github.workspace }}/tests/unit/C/scripts"
           ./RunAllTests.sh
 
