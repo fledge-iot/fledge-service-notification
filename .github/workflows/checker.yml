@@ -22,8 +22,6 @@ jobs:
         id: build_core
         run: |
           set -e
-          BRANCH="develop"
-          git clone --single-branch -b "$BRANCH" https://github.com/fledge-iot/fledge.git
           echo "⚠️ APT is misinterpreting the mirror+file: scheme as a URL 🌐, causing 404 errors ❌ due to a missing or invalid /etc/apt/apt-mirrors.txt file 📄."
           RELEASE=$(lsb_release -cs)
           echo "Using release: $RELEASE"
@@ -36,7 +34,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --fix-missing
 
-          echo "🔧 Run setup prerequisites 📦 and compilation of code 🛠️"
+          echo "🔧 Run core setup prerequisites 📦 and compilation of code 🛠️"
+          BRANCH="develop"
+          git clone --single-branch -b "$BRANCH" https://github.com/fledge-iot/fledge.git
           cd "$FLEDGE_ROOT"
           sudo ./requirements.sh
           make -j"$(nproc)"
@@ -54,7 +54,7 @@ jobs:
           make -j"$(nproc)"
 
       - name: Run Tests
-        id: check_xml_report
+        id: xml_report
         if: steps.build_service.outcome == 'success'
         run: |
           set +e  # Prevent script from failing on test error
@@ -79,7 +79,7 @@ jobs:
       # Note: GitHub Actions does not yet support native test report publishing in the UI
       # This step uses dorny/test-reporter to visualize test results in the Actions tab
       - name: Publish Test Report
-        if: steps.check_xml_report.outputs.xml_report_found == 'true'
+        if: steps.xml_report.outputs.xml_report_found == 'true'
         uses: dorny/test-reporter@v1
         continue-on-error: true
         with:
