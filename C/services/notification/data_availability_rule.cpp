@@ -45,6 +45,13 @@ static const char *default_config = QUOTE({
 		"default" : "",
 		"displayName" : "Asset Code",
 		"order" : "3"
+	},
+	"alerts" : {
+		"description" : "Notify when alerts are raised",
+		"type" : "boolean",
+		"default" : "false",
+		"displayName" : "Alerts",
+		"order" : "4"
 	}
 });
 
@@ -145,6 +152,12 @@ string DataAvailabilityRule::triggers()
 	{
 		ret += comma;
 		ret += "{ \"audit\" : \"" + audit + "\" }";
+		comma = ",";
+	}
+	if (m_alert)
+	{
+		ret += comma;
+		ret += "{ \"alert\" : \"alert\" }";
 		comma = ",";
 	}
 	ret += " ] }";
@@ -339,5 +352,14 @@ void DataAvailabilityRule::configure(const ConfigCategory &config)
 		DatapointValue value (m_assetCodeList[i]);
 		handle->addTrigger(m_assetCodeList[i], new RuleTrigger(m_assetCodeList[i], new Datapoint(m_assetCodeList[i], value)));
 	}
+
+	string alerts = config.getValue("alerts");
+	m_alert = alerts[0] == 't' ? true : false;
+	if (m_alert)
+	{
+		DatapointValue dpv("alert");
+		handle->addTrigger("alert", new RuleTrigger("alert", new Datapoint("alert", dpv)));
+	}
 	
+			
 }

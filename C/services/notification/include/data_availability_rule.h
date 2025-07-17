@@ -39,6 +39,7 @@ public:
 private:
 	std::vector<std::string>	m_assetCodeList;
 	std::vector<std::string>	m_auditCodeList;
+	bool				m_alert;
 };
 
 #endif
