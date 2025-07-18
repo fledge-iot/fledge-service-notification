@@ -19,6 +19,9 @@
 #include <logger.h>
 #include <asset_tracking.h>
 #include <unordered_set>
+
+// Forward declaration
+class NotificationManager;
 #include <mutex>
 #include <condition_variable>
 #include <deque>
@@ -93,6 +96,7 @@ class NotificationService : public ServiceAuthHandler
 		NotificationApi*	m_api;
 		ManagementApi*		m_managementApi;
 		StorageClient*		m_storage;
+		NotificationManager*	m_notificationManager;
 		std::map<std::string, bool>
 					m_registerCategories;
 		std::map<std::string, bool>

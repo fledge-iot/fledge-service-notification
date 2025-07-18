@@ -42,7 +42,8 @@ NotificationService::NotificationService(const string& myName,
 					 m_token(token),
 					 m_dryRun(false),
 					 m_restartRequest(false),
-					 m_removeFromCore(true)
+					 m_removeFromCore(true),
+					 m_notificationManager(nullptr)
 {
 	// Set name
 	m_name = myName;
@@ -88,6 +89,7 @@ NotificationService::~NotificationService()
 	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
+	delete m_notificationManager;
 	if (m_assetTracker)
 	{
 		delete m_assetTracker;
@@ -275,10 +277,11 @@ bool NotificationService::start(string& coreAddress,
 	m_storage->registerManagement(m_mgtClient);
 
 	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_mgtClient, this);
+	m_notificationManager = new NotificationManager(m_name, m_mgtClient, this);
+	m_notificationManager->setStorageClient(m_storage);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
-	instances.loadInstances();
+	m_notificationManager->loadInstances();
 
 	// Start the configuration change handling thread
 	m_configChangeThread = std::thread(&NotificationService::handlePendingConfigChanges, this);
@@ -447,8 +450,20 @@ void NotificationService::processConfigChildCreate(const string& parent_category
 	{
 		ConfigCategory config(categoryName, category);
 
-		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
+		// Check if this is not a delivery plugin. 
+		// categoryName for develivery plugins starts with "delivery_"
+		auto deliveryPluginName = CATEGORY_DELIVERY_PREFIX + m_notificationInstanceName;
 
+		if (categoryName != deliveryPluginName)
+		{
+			// Handle filter plugin creation - setup filter pipeline
+			instance->setupFilterPipeline(m_mgtClient, *m_storage);
+			Logger::getLogger()->info("Filter plugin category created: %s", categoryName.c_str());
+			return;
+		}
+		
+		// Handle call addDelivery for actual delivery plugins
+		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
 		notifications->addDelivery(notificationConfig, categoryName, config);
 	}
 
