@@ -24,9 +24,6 @@
 // Forward declaration
 class NotificationService;
 
-// Standalone function declarations for filter pipeline callbacks
-void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings);
-void receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings);
 
 // Notification type repeat time
 #define DEFAULT_RETRIGGER_TIME 60.0
@@ -270,8 +267,10 @@ class NotificationInstance
 		void			setFilteredData(ReadingSet* readings);  // Set filtered data from pipeline
 		void			clearFilteredData();  // Clear filtered data
 		bool			hasActiveFilters() const;  // Check if filters are configured and active
+		
 		// Filter pipeline callback functions
-
+		static void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings);
+		static void receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings);
 	private:
 		const std::string	m_name;
 		bool			m_enable;

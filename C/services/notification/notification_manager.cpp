@@ -2245,24 +2245,13 @@ bool NotificationManager::APIdeleteInstance(const string& instanceName)
  * @param outHandle	Pointer to the next filter
  * @param readings	Readings to pass to the next filter
  */
-void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings)
+void NotificationInstance::passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings)
 {
-	if (!outHandle || !readings) 
-	{
-		Logger::getLogger()->error("passToOnwardFilter: Invalid parameters");
-		return;
-	}
-	
-	try 
-	{
-		// Cast outHandle to the next filter and call its ingest method
-		FilterPlugin* nextFilter = static_cast<FilterPlugin*>(outHandle);
-		nextFilter->ingest(readings);
-	}
-	catch (const std::exception& e)
-	{
-		Logger::getLogger()->error("passToOnwardFilter: Exception in filter processing: %s", e.what());
-	}
+	// Get next filter in the pipeline
+	PipelineElement *next = (PipelineElement *)outHandle;
+
+	// Pass readings to the next stage in the pipeline
+	next->ingest(readings);
 }
 
 /**
@@ -2271,7 +2260,7 @@ void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings)
  * @param outHandle	Pointer to the notification instance
  * @param readings	Filtered readings ready for processing
  */
-void receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings)
+void NotificationInstance::receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings)
 {
 	if (!outHandle || !readings) 
 	{
