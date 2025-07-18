@@ -20,6 +20,9 @@
 #include <asset_tracking.h>
 #include <unordered_set>
 
+// Forward declaration
+class NotificationManager;
+
 #define CATEGORY_DELIVERY_PREFIX "delivery"
 #define CATEGORY_DELIVERY_EXTRA  "_channel_"
 
@@ -90,6 +93,7 @@ class NotificationService : public ServiceAuthHandler
 		NotificationApi*	m_api;
 		ManagementApi*		m_managementApi;
 		StorageClient*		m_storage;
+		NotificationManager*	m_notificationManager;
 		std::map<std::string, bool>
 					m_registerCategories;
 		std::map<std::string, bool>

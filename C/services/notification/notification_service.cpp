@@ -42,7 +42,8 @@ NotificationService::NotificationService(const string& myName,
 					 m_token(token),
 					 m_dryRun(false),
 					 m_restartRequest(false),
-					 m_removeFromCore(true)
+					 m_removeFromCore(true),
+					 m_notificationManager(nullptr)
 {
 	// Set name
 	m_name = myName;
@@ -80,6 +81,7 @@ NotificationService::~NotificationService()
 	delete m_managementApi;
 	delete m_logger;
 	delete m_assetTracker;
+	delete m_notificationManager;
 }
 
 /**
@@ -263,10 +265,11 @@ bool NotificationService::start(string& coreAddress,
 	m_storage->registerManagement(m_mgtClient);
 
 	// Setup NotificationManager class
-	NotificationManager instances(m_name, m_mgtClient, this);
+	m_notificationManager = new NotificationManager(m_name, m_mgtClient, this);
+	m_notificationManager->setStorageClient(m_storage);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
-	instances.loadInstances();
+	m_notificationManager->loadInstances();
 
 	m_mgtClient->addAuditEntry("NTFST",
 					"INFORMATION",
@@ -397,19 +400,31 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 
 	notificationName = parent_category;
 
-		// It's a notification category
-		notifications->lockInstances();
-		instance = notifications->getNotificationInstance(notificationName);
-		notifications->unlockInstances();
+	// It's a notification category
+	notifications->lockInstances();
+	instance = notifications->getNotificationInstance(notificationName);
+	notifications->unlockInstances();
 
-		if (instance)
+	if (instance)
+	{
+		ConfigCategory config(categoryName, category);
+
+		// Check if this is not a delivery plugin. 
+		// categoryName for develivery plugins starts with "delivery_"
+		auto deliveryPluginName = CATEGORY_DELIVERY_PREFIX + m_notificationInstanceName;
+
+		if (categoryName != deliveryPluginName)
 		{
-			ConfigCategory config(categoryName, category);
-
-			ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
-
-			notifications->addDelivery(notificationConfig, categoryName, config);
+			// Handle filter plugin creation - setup filter pipeline
+			instance->setupFilterPipeline(m_mgtClient, *m_storage);
+			Logger::getLogger()->info("Filter plugin category created: %s", categoryName.c_str());
+			return;
 		}
+		
+		// Handle call addDelivery for actual delivery plugins
+		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
+		notifications->addDelivery(notificationConfig, categoryName, config);
+	}
 
 	if (instance == NULL)
 	{

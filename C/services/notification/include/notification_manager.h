@@ -12,11 +12,21 @@
 
 #include <logger.h>
 #include <management_client.h>
+#include <storage_client.h>
 #include <rule_plugin.h>
 #include <delivery_plugin.h>
 #include <notification_service.h>
 #include <notification_stats.h>
 #include <asset_tracking.h>
+#include <filter_pipeline.h>
+#include <filter_plugin.h>
+
+// Forward declaration
+class NotificationService;
+
+// Standalone function declarations for filter pipeline callbacks
+void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings);
+void receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings);
 
 // Notification type repeat time
 #define DEFAULT_RETRIGGER_TIME 60.0
@@ -250,6 +260,18 @@ class NotificationInstance
 		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
 		void deleteDeliveryExtra(const std::string &deliveryName);
 
+		// Filter pipeline methods
+		bool			hasFilterPipeline() const { return m_filterPipeline != nullptr; };
+		FilterPipeline*	getFilterPipeline() { return m_filterPipeline; };
+		bool			setupFilterPipeline(ManagementClient* mgtClient, StorageClient& storage);
+		void			cleanupFilterPipeline();
+		bool			processDataThroughFilter(ReadingSet* readings);
+		ReadingSet*		getFilteredData();  // Get filtered data from pipeline
+		void			setFilteredData(ReadingSet* readings);  // Set filtered data from pipeline
+		void			clearFilteredData();  // Clear filtered data
+		bool			hasActiveFilters() const;  // Check if filters are configured and active
+		// Filter pipeline callback functions
+
 	private:
 		const std::string	m_name;
 		bool			m_enable;
@@ -263,6 +285,12 @@ class NotificationInstance
 		struct timeval		m_lastSentTv;
 		NotificationState	m_state;
 		bool			m_zombie;
+		
+		// Filter pipeline support
+		FilterPipeline*	m_filterPipeline;
+		std::string		m_filterConfig;
+		mutable std::mutex		m_pipelineMutex;  // mutable allows locking in const methods
+		ReadingSet*		m_filteredData;  // Store filtered data from pipeline
 };
 
 typedef NotificationInstance::NotificationType NOTIFICATION_TYPE;
@@ -320,6 +348,12 @@ class NotificationManager
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
 		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
+		void			setStorageClient(StorageClient* storage) { m_storage = storage; };
+
+		// Filter pipeline support
+		bool			createFilterCategory(const std::string& notificationName, const std::string& filterName);
+		bool			deleteFilterCategory(const std::string& notificationName, const std::string& filterName);
+		std::string		getFilterCategoryName(const std::string& notificationName, const std::string& filterName);
 
 	private:
 		PLUGIN_HANDLE		loadRulePlugin(const std::string& rulePluginName);
@@ -343,6 +377,7 @@ class NotificationManager
 		static NotificationManager*
 					m_instance;
 		ManagementClient* 	m_managerClient;
+		StorageClient*		m_storage;
 		std::map<std::string, NotificationInstance *>
 					m_instances;
 		std::map<std::string, BUILTIN_RULE_FN>
