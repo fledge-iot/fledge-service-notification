@@ -348,6 +348,8 @@ class NotificationManager
 		void			collectZombies();
 		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
 		void			setStorageClient(StorageClient* storage) { m_storage = storage; };
+		ManagementClient*	getManagementClient() { return m_managerClient; };
+		StorageClient*		getStorageClient() { return m_storage; };
 
 		// Filter pipeline support
 		bool			createFilterCategory(const std::string& notificationName, const std::string& filterName);
