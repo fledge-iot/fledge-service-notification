@@ -1509,12 +1509,14 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 	string deliveryPluginName;
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	if (!this->getConfigurationItems(config,
 					 enabled,
 					 rulePluginName,
 					 deliveryPluginName,
 					 type,
-					 customText))
+					 customText,
+					 filterPipeline))
 	{
 		return false;
 	}
@@ -1652,12 +1654,14 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	if (!this->getConfigurationItems(config,
 					 enabled,
 					 rulePluginName,
 					 deliveryPluginNameFirst,
 					 type,
-					 customText))
+					 customText,
+					 filterPipeline))
 	{
 		return false;
 	}
@@ -1808,7 +1812,8 @@ bool NotificationInstance::updateInstance(const string& name,
 					      rulePluginName,
 					      deliveryPluginName,
 					      type,
-					      customText))
+					      customText,
+					      filterPipeline))
 	{
 		return false;
 	}
@@ -1921,12 +1926,14 @@ bool NotificationInstance::updateInstance(const string& name,
 	 * 2- Notification type change: update current instance
 	 * 3- Custom text: it only affects delivery plugin:
 	 *	easy way: remove instance & create a new one
-	 * 4- Filter pipeline changes: update current filter pipeline
+	 * 4- Filter pipeline changes: remove instance & create a new one
 	 */
 	if (!this->getRulePlugin() ||
 	    !this->getDeliveryPlugin() ||
 	    rulePluginName.compare(this->getRulePlugin()->getName()) != 0 ||
-	    deliveryPluginName.compare(this->getDeliveryPlugin()->getName()) != 0)
+	    deliveryPluginName.compare(this->getDeliveryPlugin()->getName()) != 0 ||
+	    (this->getFilterPipeline() && this->getFilterPipeline()->hasChanged(filterPipeline)) ||
+	    (!this->getFilterPipeline() && !filterPipeline.empty()))
 	{
 		bool retCode = false;
 
@@ -1991,34 +1998,6 @@ bool NotificationInstance::updateInstance(const string& name,
 	if (this->getDelivery() && !customText.empty())
 	{
 		this->getDelivery()->setText(customText);
-	}
-
-	// Handle filter pipeline changes
-	if (newConfig.itemExists("filter"))
-	{
-		string newPipeline = newConfig.getValue("filter");
-
-		// Check if filter pipeline has changed
-		if (this->getFilterPipeline() && this->getFilterPipeline()->hasChanged(newPipeline))
-		{
-			Logger::getLogger()->info("Filter pipeline configuration changed for notification instance '%s'", name.c_str());
-
-			// Setup new filter pipeline
-			if (!this->setupFilterPipeline(instances->getManagementClient(), *instances->getStorageClient()))
-			{
-				Logger::getLogger()->error("Failed to setup filter pipeline for notification instance '%s'", name.c_str());
-			}
-		}
-		else if (!this->getFilterPipeline() && !newPipeline.empty())
-		{
-			// First time setting up filter pipeline
-			Logger::getLogger()->info("Setting up filter pipeline for notification instance '%s'", name.c_str());
-			
-			if (!this->setupFilterPipeline(instances->getManagementClient(), *instances->getStorageClient()))
-			{
-				Logger::getLogger()->error("Failed to setup filter pipeline for notification instance '%s'", name.c_str());
-			}
-		}
 	}
 
 	return true;
@@ -2103,7 +2082,8 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 						string& rulePluginName,
 						string& deliveryPluginName,
 						NOTIFICATION_TYPE& nType,
-						string& customText)
+						string& customText,
+						string& filterPipeline)
 {
 	long retriggerTime = DEFAULT_RETRIGGER_TIME;
 	struct timeval retriggerTimeTv;
@@ -2161,6 +2141,12 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	if (config.itemExists("text"))
 	{
 		customText = config.getValue("text");
+	}
+
+	// Get filter pipeline configuration
+	if (config.itemExists("filter"))
+	{
+		filterPipeline = config.getValue("filter");
 	}
 
 	if (enabled && rulePluginName.empty())

@@ -340,7 +340,8 @@ class NotificationManager
 							      std::string& rulePluginName,
 							      std::string& deliveryPluginName,
 							      NOTIFICATION_TYPE& type,
-							      std::string& customText);
+							      std::string& customText,
+							      std::string& filterPipeline);
 		bool			auditNotification(const std::string& notification,
 							  const std::string& reason);
 		bool			APIdeleteInstance(const string& instanceName);
