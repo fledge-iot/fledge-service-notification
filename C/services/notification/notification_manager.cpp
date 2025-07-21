@@ -1800,6 +1800,7 @@ bool NotificationInstance::updateInstance(const string& name,
 	string deliveryPluginName;
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	NotificationManager* instances =  NotificationManager::getInstance();
 	// Parse new configuration object
 	if (!instances->getConfigurationItems(newConfig,
@@ -1920,9 +1921,8 @@ bool NotificationInstance::updateInstance(const string& name,
 	 * 2- Notification type change: update current instance
 	 * 3- Custom text: it only affects delivery plugin:
 	 *	easy way: remove instance & create a new one
-	 * 4- ....
+	 * 4- Filter pipeline changes: update current filter pipeline
 	 */
-
 	if (!this->getRulePlugin() ||
 	    !this->getDeliveryPlugin() ||
 	    rulePluginName.compare(this->getRulePlugin()->getName()) != 0 ||
@@ -1991,6 +1991,34 @@ bool NotificationInstance::updateInstance(const string& name,
 	if (this->getDelivery() && !customText.empty())
 	{
 		this->getDelivery()->setText(customText);
+	}
+
+	// Handle filter pipeline changes
+	if (newConfig.itemExists("filter"))
+	{
+		string newPipeline = newConfig.getValue("filter");
+
+		// Check if filter pipeline has changed
+		if (this->getFilterPipeline() && this->getFilterPipeline()->hasChanged(newPipeline))
+		{
+			Logger::getLogger()->info("Filter pipeline configuration changed for notification instance '%s'", name.c_str());
+
+			// Setup new filter pipeline
+			if (!this->setupFilterPipeline(instances->getManagementClient(), *instances->getStorageClient()))
+			{
+				Logger::getLogger()->error("Failed to setup filter pipeline for notification instance '%s'", name.c_str());
+			}
+		}
+		else if (!this->getFilterPipeline() && !newPipeline.empty())
+		{
+			// First time setting up filter pipeline
+			Logger::getLogger()->info("Setting up filter pipeline for notification instance '%s'", name.c_str());
+			
+			if (!this->setupFilterPipeline(instances->getManagementClient(), *instances->getStorageClient()))
+			{
+				Logger::getLogger()->error("Failed to setup filter pipeline for notification instance '%s'", name.c_str());
+			}
+		}
 	}
 
 	return true;

@@ -408,18 +408,6 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
 	if (instance)
 	{
 		ConfigCategory config(categoryName, category);
-
-		// Check if this is not a delivery plugin. 
-		// categoryName for develivery plugins starts with "delivery_"
-		auto deliveryPluginName = CATEGORY_DELIVERY_PREFIX + m_notificationInstanceName;
-
-		if (categoryName != deliveryPluginName)
-		{
-			// Handle filter plugin creation - setup filter pipeline
-			instance->setupFilterPipeline(m_mgtClient, *m_storage);
-			Logger::getLogger()->info("Filter plugin category created: %s", categoryName.c_str());
-			return;
-		}
 		
 		// Handle call addDelivery for actual delivery plugins
 		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
@@ -504,7 +492,7 @@ void NotificationService::configChange(const string& categoryName,
 		this->updateSecurityCategory(category);
 		return;
 	}
-
+	
 	std::size_t found;
 	std::size_t foundRule = categoryName.find("rule");
 	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
