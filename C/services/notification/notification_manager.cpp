@@ -1766,10 +1766,7 @@ bool NotificationManager::setupInstance(const string& name,
 	success = setupRuleDeliveryFirst (name, config);
 
 	if (success) 
-	{
-
-		success = setupDeliveryExtra (name, config);
-		
+	{		
 		// Add filter pipeline setup
 		if (success && m_storage) 
 		{
@@ -1780,6 +1777,8 @@ bool NotificationManager::setupInstance(const string& name,
 				instance->setupFilterPipeline(m_managerClient, *m_storage);
 			}
 		}
+		// we register for configuration changes for the delivery extra and filters
+		success = setupDeliveryExtra (name, config);
 	}
 
 	return success;

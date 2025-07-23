@@ -393,7 +393,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 			ReadingSet* filteredReadings = data->getAssetData();
 			bool ownedAssetData = false;
 
-			if (instance->hasFilterPipeline()) 
+			if (instance->hasActiveFilters()) 
 			{
 				do
 				{
