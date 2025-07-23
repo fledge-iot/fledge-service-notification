@@ -17,6 +17,7 @@
 
 #include <notification_manager.h>
 #include <notification_service.h>
+#include <notification_service.h>
 #include <rule_plugin.h>
 #include <delivery_plugin.h>
 #include <string.h>
@@ -192,6 +193,9 @@ NotificationInstance::NotificationInstance(const string& name,
 					   m_type(type),
 					   m_rule(rule),
 					   m_delivery(delivery),
+					   m_zombie(false),
+					   m_filterPipeline(nullptr),
+					   m_filteredData(nullptr)
 					   m_zombie(false),
 					   m_filterPipeline(nullptr),
 					   m_filteredData(nullptr)
@@ -1779,6 +1783,17 @@ bool NotificationManager::setupInstance(const string& name,
 		}
 		// we register for configuration changes for the delivery extra and filters
 		success = setupDeliveryExtra (name, config);
+		
+		// Add filter pipeline setup
+		if (success && m_storage) 
+		{
+			// Setup filter pipeline if configured
+			NotificationInstance* instance = getNotificationInstance(name);
+			if (instance) 
+			{
+				instance->setupFilterPipeline(m_managerClient, *m_storage);
+			}
+		}
 	}
 
 	return success;

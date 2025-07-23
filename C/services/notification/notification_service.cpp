@@ -279,6 +279,8 @@ bool NotificationService::start(string& coreAddress,
 	// Setup NotificationManager class
 	m_notificationManager = new NotificationManager(m_name, m_mgtClient, this);
 	m_notificationManager->setStorageClient(m_storage);
+	m_notificationManager = new NotificationManager(m_name, m_mgtClient, this);
+	m_notificationManager->setStorageClient(m_storage);
 	// Get all notification instances under Notifications
 	// and load plugins defined in all notifications 
 	m_notificationManager->loadInstances();
