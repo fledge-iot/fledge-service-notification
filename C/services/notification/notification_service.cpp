@@ -68,6 +68,7 @@ NotificationService::NotificationService(const string& myName,
 	// Set NULL for other resources
 	m_mgtClient = NULL;
 	m_managementApi = NULL;
+	m_assetTracker = NULL;
 }
 
 /**
@@ -87,7 +88,10 @@ NotificationService::~NotificationService()
 	delete m_mgtClient;
 	delete m_managementApi;
 	delete m_logger;
-	delete m_assetTracker;
+	if (m_assetTracker)
+	{
+		delete m_assetTracker;
+	}
 }
 
 /**
