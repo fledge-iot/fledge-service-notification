@@ -75,6 +75,14 @@ NotificationService::NotificationService(const string& myName,
  */
 NotificationService::~NotificationService()
 {
+	// Signal shutdown and wait for config change thread to complete
+	if (m_configChangeThread.joinable())
+	{
+		m_shutdown = true;
+		m_cvNewReconf.notify_all();
+		m_configChangeThread.join();
+	}
+
 	delete m_api;
 	delete m_mgtClient;
 	delete m_managementApi;
@@ -268,6 +276,9 @@ bool NotificationService::start(string& coreAddress,
 	// and load plugins defined in all notifications 
 	instances.loadInstances();
 
+	// Start the configuration change handling thread
+	m_configChangeThread = std::thread(&NotificationService::handlePendingConfigChanges, this);
+
 	m_mgtClient->addAuditEntry("NTFST",
 					"INFORMATION",
 					"{\"name\": \"" + m_name + "\"}");
@@ -349,6 +360,14 @@ void NotificationService::stop(bool removeFromCore)
 
 	// Stop the NotificationApi
 	m_api->stop();
+
+	// Signal shutdown and wait for config change thread to complete
+	if (m_configChangeThread.joinable())
+	{
+		m_shutdown = true;
+		m_cvNewReconf.notify_all();
+		m_configChangeThread.join();
+	}
 }
 
 /**
@@ -386,30 +405,57 @@ void NotificationService::cleanupResources()
 }
 
 /**
- * Create an extra delivery
+ * Create an extra delivery using a separate thread
  */
 void NotificationService::configChildCreate(const std::string& parent_category, const string& categoryName, const string& category)
 {
+	{
+		std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+		m_pendingNewConfig.emplace_back(std::make_tuple("configChildCreate", parent_category, categoryName, category));
+		m_logger->debug("NotificationService::configChildCreate(): After adding new entry, m_pendingNewConfig.size()=%d", m_pendingNewConfig.size());
 
+		m_cvNewReconf.notify_all();
+	}
+
+}
+
+/**
+ * Process configuration child create
+ *
+ * @param parent_category	Parent category name
+ * @param categoryName		Category name
+ * @param category		Category value
+ */
+void NotificationService::processConfigChildCreate(const string& parent_category, const string& categoryName, const string& category)
+{
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 	string notificationName;
 
 	notificationName = parent_category;
 
-		// It's a notification category
-		notifications->lockInstances();
-		instance = notifications->getNotificationInstance(notificationName);
-		notifications->unlockInstances();
+	// It's a notification category
+	notifications->lockInstances();
+	instance = notifications->getNotificationInstance(notificationName);
+	notifications->unlockInstances();
 
-		if (instance)
+	if (instance)
+	{
+		ConfigCategory config(categoryName, category);
+		// Check if this is not a delivery plugin. 
+		// categoryName for delivery plugins starts with "delivery_"
+		auto deliveryPluginName = CATEGORY_DELIVERY_PREFIX + m_notificationInstanceName;
+
+		if (categoryName != deliveryPluginName)
 		{
-			ConfigCategory config(categoryName, category);
-
-			ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
-
-			notifications->addDelivery(notificationConfig, categoryName, config);
+			m_logger->debug("Filter plugin category created: %s", categoryName.c_str());
+			return;
 		}
+		
+		// Handle call addDelivery for actual delivery plugins
+		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
+		notifications->addDelivery(notificationConfig, categoryName, config);
+	}
 
 	if (instance == NULL)
 	{
@@ -423,6 +469,23 @@ void NotificationService::configChildCreate(const std::string& parent_category, 
  * Delete an extra delivery
  */
 void NotificationService::configChildDelete(const std::string& parent_category, const string& categoryName)
+{
+	{
+		std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+		m_pendingNewConfig.emplace_back(std::make_tuple("configChildDelete", parent_category, categoryName, ""));
+		m_logger->debug("NotificationService::configChildDelete(): After adding new entry, m_pendingNewConfig.size()=%d", m_pendingNewConfig.size());
+
+		m_cvNewReconf.notify_all();
+	}
+}
+
+/**
+ * Process configuration child delete
+ *
+ * @param parent_category	Parent category name
+ * @param categoryName		Category name
+ */
+void NotificationService::processConfigChildDelete(const string& parent_category, const string& categoryName)
 {
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
@@ -468,7 +531,23 @@ void NotificationService::configChildDelete(const std::string& parent_category, 
 void NotificationService::configChange(const string& categoryName,
 				       const string& category)
 {
+	{
+		std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+		m_pendingNewConfig.emplace_back(std::make_tuple("configChange", categoryName, category, ""));
+		m_logger->debug("NotificationService::configChange(): After adding new entry, m_pendingNewConfig.size()=%d", m_pendingNewConfig.size());
 
+		m_cvNewReconf.notify_all();
+	}
+}
+
+/**
+ * Process configuration change
+ *
+ * @param categoryName	Category name
+ * @param category	Category value
+ */
+void NotificationService::processConfigChange(const string& categoryName, const string& category)
+{
 	NotificationManager* notifications = NotificationManager::getInstance();
 	NotificationInstance* instance = NULL;
 
@@ -489,15 +568,15 @@ void NotificationService::configChange(const string& categoryName,
 		this->updateSecurityCategory(category);
 		return;
 	}
-
+	
 	std::size_t found;
 	std::size_t foundRule = categoryName.find("rule");
 	std::size_t foundDelivery = categoryName.find(CATEGORY_DELIVERY_PREFIX);
 	std::size_t foundExtraDelivery = categoryName.find(CATEGORY_DELIVERY_EXTRA);
 
 	if (foundRule == std::string::npos &&
-	    foundDelivery == std::string::npos &&
-	    foundExtraDelivery == std::string::npos)
+		foundDelivery == std::string::npos &&
+		foundExtraDelivery == std::string::npos)
 	{
 		// It's a notification category
 		notifications->lockInstances();
@@ -523,7 +602,7 @@ void NotificationService::configChange(const string& categoryName,
 			instance = notifications->getNotificationInstance(categoryName.substr(4));
 			notifications->unlockInstances();
 			if (!instance ||
-			    !instance->getRulePlugin())
+				!instance->getRulePlugin())
 			{
 				return;
 			}
@@ -554,11 +633,11 @@ void NotificationService::configChange(const string& categoryName,
 			else
 			{
 				for (auto a = allAssets.begin();
-					  a != allAssets.end(); )
+					a != allAssets.end(); )
 				{
 					// Remove assetName/ruleName from subscriptions
 					subscriptions->removeSubscription(a->getSource(), a->getAssetName(),
-									  ruleName);
+									ruleName);
 					// Remove asseet
 					a = allAssets.erase(a);
 				}
@@ -608,8 +687,8 @@ void NotificationService::configChange(const string& categoryName,
 				// Fetch all extra delivery channels for this nitification
 				std::vector<std::pair<std::string, NotificationDelivery *>>& extra = instance->getDeliveryExtra();
 				for (auto item = extra.begin();
-					  item != extra.end();
-					  ++item)
+					item != extra.end();
+					++item)
 				{
 					if (item->first == categoryName  && item->second->getPlugin())
 					{
@@ -725,5 +804,60 @@ bool NotificationService::sendToDispatcher(const string& path, const string& pay
 	catch (exception &e) {
 		Logger::getLogger()->error("Failed to send control operation to dispatcher service, %s", e.what());
 		return false;
+	}
+}
+
+/**
+ * Handle pending configuration changes in a separate thread
+ */
+void NotificationService::handlePendingConfigChanges()
+{
+	while (isRunning())
+	{
+		m_logger->debug("NotificationService::handlePendingConfigChanges: Going into cv wait");
+		std::mutex mtx;
+		std::unique_lock<std::mutex> lck(mtx);
+		m_cvNewReconf.wait(lck);
+		m_logger->debug("NotificationService::handlePendingConfigChanges: cv wait has completed; some reconf request(s) has/have been queued up");
+		unsigned int numPendingReconfs = 0;
+		{
+			std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+			numPendingReconfs = m_pendingNewConfig.size();
+		}
+		while (isRunning() && numPendingReconfs)
+		{
+			std::tuple<std::string,std::string,std::string,std::string> reconfValue;
+			{
+				std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+				reconfValue = m_pendingNewConfig.front();
+				m_pendingNewConfig.pop_front();
+			}
+			{
+				string operationType = std::get<0>(reconfValue);
+				string param1 = std::get<1>(reconfValue);
+				string param2 = std::get<2>(reconfValue);
+				string param3 = std::get<3>(reconfValue);
+				
+				m_logger->info("Handle config operation %s: %s, %s, %s",
+						operationType.c_str(), param1.c_str(), param2.c_str(), param3.c_str());
+				
+				if (operationType == "configChange")
+				{
+					processConfigChange(param1, param2);
+				}
+				else if (operationType == "configChildCreate")
+				{
+					processConfigChildCreate(param1, param2, param3);
+				}
+				else if (operationType == "configChildDelete")
+				{
+					processConfigChildDelete(param1, param2);
+				}
+			}
+			{
+				std::lock_guard<std::mutex> guard(m_pendingNewConfigMutex);
+				numPendingReconfs = m_pendingNewConfig.size();
+			}
+		}
 	}
 }
