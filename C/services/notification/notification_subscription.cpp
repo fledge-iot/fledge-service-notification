@@ -414,11 +414,6 @@ bool NotificationSubscription::addSubscription(SubscriptionElement *element)
 		else
 			m_logger->error("Failed to register for %s notification from the storage layer", key.c_str());
 	}
-	else
-	{
-		m_logger->error("Subscription not added, too few keys");
-	}
-
 
 	m_logger->info("Subscription for  '" + key + \
 			       "' has # " + to_string(m_subscriptions[key].size()) + " rules");
