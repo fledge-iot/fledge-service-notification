@@ -442,18 +442,9 @@ void NotificationService::processConfigChildCreate(const string& parent_category
 	if (instance)
 	{
 		ConfigCategory config(categoryName, category);
-		// Check if this is not a delivery plugin. 
-		// categoryName for delivery plugins starts with "delivery_"
-		auto deliveryPluginName = CATEGORY_DELIVERY_PREFIX + m_notificationInstanceName;
 
-		if (categoryName != deliveryPluginName)
-		{
-			m_logger->debug("Filter plugin category created: %s", categoryName.c_str());
-			return;
-		}
-		
-		// Handle call addDelivery for actual delivery plugins
 		ConfigCategory notificationConfig = m_mgtClient->getCategory(notificationName);
+
 		notifications->addDelivery(notificationConfig, categoryName, config);
 	}
 
