@@ -330,11 +330,7 @@ bool NotificationInstance::hasActiveFilters() const
 
 void NotificationInstance::clearFilteredData()
 {
-	if (m_filteredData)
-	{
-		delete m_filteredData;
-		m_filteredData = nullptr;
-	}
+
 }
 
 /**
