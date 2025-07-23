@@ -263,7 +263,7 @@ class NotificationInstance
 		bool			setupFilterPipeline(ManagementClient* mgtClient, StorageClient& storage);
 		void			cleanupFilterPipeline();
 		bool			processDataThroughFilter(ReadingSet* readings);
-		ReadingSet*		getFilteredData();  // Get filtered data from pipeline
+		ReadingSet*		acquireFilteredData();  // Get filtered data from pipeline
 		void			setFilteredData(ReadingSet* readings);  // Set filtered data from pipeline
 		void			clearFilteredData();  // Clear filtered data
 		bool			hasActiveFilters() const;  // Check if filters are configured and active
@@ -347,6 +347,7 @@ class NotificationManager
 		bool			APIdeleteInstance(const string& instanceName);
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
+		void			periodicZombieCollection();
 		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
 		void			setStorageClient(StorageClient* storage) { m_storage = storage; };
 		ManagementClient*	getManagementClient() { return m_managerClient; };

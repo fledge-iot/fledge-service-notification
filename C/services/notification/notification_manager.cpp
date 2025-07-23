@@ -17,7 +17,6 @@
 
 #include <notification_manager.h>
 #include <notification_service.h>
-#include <notification_service.h>
 #include <rule_plugin.h>
 #include <delivery_plugin.h>
 #include <string.h>
@@ -196,9 +195,6 @@ NotificationInstance::NotificationInstance(const string& name,
 					   m_zombie(false),
 					   m_filterPipeline(nullptr),
 					   m_filteredData(nullptr)
-					   m_zombie(false),
-					   m_filterPipeline(nullptr),
-					   m_filteredData(nullptr)
 {
 	// Set initial state for notification delivery
 	m_lastSentTv.tv_sec = 0;
@@ -271,7 +267,7 @@ void NotificationInstance::cleanupFilterPipeline()
  * @brief Process a ReadingSet through the filter pipeline if present.
  * 
  * This method processes incoming data through the configured filter pipeline.
- * The filtered data is stored and can be retrieved via getFilteredData().
+ * The filtered data is stored and can be retrieved via acquireFilteredData().
  * 
  * @param readings Pointer to ReadingSet to process through the pipeline
  * @return true if processed successfully, false if no pipeline or processing failed
@@ -316,13 +312,20 @@ bool NotificationInstance::processDataThroughFilter(ReadingSet* readings)
 	return false;
 }
 
-ReadingSet* NotificationInstance::getFilteredData()
+ReadingSet* NotificationInstance::acquireFilteredData()
 {
-	return m_filteredData;
+	auto data = m_filteredData;
+	m_filteredData = nullptr; // Clear the filtered data after retrieval
+	return data;
 }
 
 void NotificationInstance::setFilteredData(ReadingSet* readings)
 {
+	if (m_filteredData) 
+	{
+		delete m_filteredData; // Free previous filtered data
+	}
+
 	m_filteredData = readings;
 }
 
@@ -1783,17 +1786,6 @@ bool NotificationManager::setupInstance(const string& name,
 		}
 		// we register for configuration changes for the delivery extra and filters
 		success = setupDeliveryExtra (name, config);
-		
-		// Add filter pipeline setup
-		if (success && m_storage) 
-		{
-			// Setup filter pipeline if configured
-			NotificationInstance* instance = getNotificationInstance(name);
-			if (instance) 
-			{
-				instance->setupFilterPipeline(m_managerClient, *m_storage);
-			}
-		}
 	}
 
 	return success;
@@ -2034,9 +2026,34 @@ bool NotificationManager::removeInstance(const string& instanceName)
 	auto r = m_instances.find(instanceName);
 	if (r != m_instances.end())
 	{
+		// Unregister from configuration changes before marking as zombie
+		if (m_service)
+		{
+			m_service->unregisterCategory(instanceName);
+			
+			// Also unregister rule and delivery categories
+			string ruleCategoryName = "rule" + instanceName;
+			m_service->unregisterCategory(ruleCategoryName);
+			
+			string deliveryCategoryName = getDeliveryCategoryName(instanceName, "", false, false);
+			m_service->unregisterCategory(deliveryCategoryName);
+			
+			// Unregister extra delivery categories
+			string extraDeliveryPrefix = getDeliveryCategoryName(instanceName, "", true, true);
+			ConfigCategories categories = m_managerClient->getChildCategories(instanceName);
+			for (unsigned int idx = 0; idx < categories.length(); idx++)
+			{
+				string categoryName = categories[idx]->getName();
+				if (categoryName.compare(0, extraDeliveryPrefix.size(), extraDeliveryPrefix) == 0)
+				{
+					m_service->unregisterCategory(categoryName);
+				}
+			}
+		}
+		
 		(*r).second->markAsZombie();
 		ret = true;
-		Logger::getLogger()->debug("Instance %s marked as Zombie",
+		Logger::getLogger()->debug("Instance %s marked as Zombie and unregistered from config changes",
 					   instanceName.c_str());
 	}
 	return ret;
@@ -2072,6 +2089,23 @@ void NotificationManager::collectZombies()
 		{
 			++r;
 		}
+	}
+}
+
+/**
+ * Periodic zombie collection - should be called periodically to clean up
+ * zombie instances and prevent memory leaks
+ */
+void NotificationManager::periodicZombieCollection()
+{
+	static time_t lastCollection = 0;
+	time_t now = time(NULL);
+	
+	// Collect zombies every 30 seconds
+	if (now - lastCollection >= 30)
+	{
+		collectZombies();
+		lastCollection = now;
 	}
 }
 

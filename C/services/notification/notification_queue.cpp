@@ -415,7 +415,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 					break;
 				}
 					
-					filteredReadings = instance->getFilteredData(); // Get filtered data from pipeline
+					filteredReadings = instance->acquireFilteredData(); // Get filtered data from pipeline
 					ownedAssetData = true; // Indicate that we own the filtered data
 				}while(0);
 			}

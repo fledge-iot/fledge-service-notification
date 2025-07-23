@@ -58,6 +58,7 @@ class NotificationService : public ServiceAuthHandler
 
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);
+		void			unregisterCategory(const std::string& categoryName);
 		void   			updateAssetTrackerCache(AssetTrackingTuple tuple)
 						{
 							std::string track = tuple.m_assetName + tuple.m_eventName + tuple.m_serviceName + tuple.m_pluginName;

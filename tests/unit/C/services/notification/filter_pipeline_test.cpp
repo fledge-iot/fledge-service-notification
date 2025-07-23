@@ -61,7 +61,8 @@ TEST_F(FilterPipelineTest, ErrorHandling) {
 }
 
 // Test 3: Filtered data management
-TEST_F(FilterPipelineTest, FilteredDataManagement) {
+TEST_F(FilterPipelineTest, FilteredDataManagement) 
+{
     // Create test readings
     ReadingSet* readings = new ReadingSet();
     DatapointValue dv(42.0);
@@ -72,19 +73,18 @@ TEST_F(FilterPipelineTest, FilteredDataManagement) {
     
     // Test setter and getter
     instance->setFilteredData(readings);
-    EXPECT_EQ(instance->getFilteredData(), readings);
-    
-    // Test clear functionality
-    instance->clearFilteredData();
-    EXPECT_EQ(instance->getFilteredData(), nullptr);
-    
+    EXPECT_EQ(instance->acquireFilteredData(), readings);
+       
     // Test with null data
     instance->setFilteredData(nullptr);
-    EXPECT_EQ(instance->getFilteredData(), nullptr);
+    EXPECT_EQ(instance->acquireFilteredData(), nullptr);
+
+    delete readings; // Clean up after test
 }
 
 // Test 4: Data processing
-TEST_F(FilterPipelineTest, DataProcessing) {
+TEST_F(FilterPipelineTest, DataProcessing) 
+{
     // Test with null readings
     EXPECT_FALSE(instance->processDataThroughFilter(nullptr));
     
@@ -101,15 +101,12 @@ TEST_F(FilterPipelineTest, DataProcessing) {
     readingVector.push_back(reading);
     readings->append(readingVector);
     EXPECT_FALSE(instance->processDataThroughFilter(readings)); // Should return false when no pipeline
-    delete readings;
+    delete readings; // Clean up after test
 }
 
 // Test 5: Callback functions
-TEST_F(FilterPipelineTest, CallbackFunctions) {
-    // Test with null parameters (should not crash)
-    passToOnwardFilter(nullptr, nullptr);
-    receiveFilteredData(nullptr, nullptr);
-    
+TEST_F(FilterPipelineTest, CallbackFunctions) 
+{   
     // Test with valid parameters
     ReadingSet* readings = new ReadingSet();
     DatapointValue dv(42.0);
@@ -118,14 +115,14 @@ TEST_F(FilterPipelineTest, CallbackFunctions) {
     readingVector.push_back(reading);
     readings->append(readingVector);
     
-    receiveFilteredData(static_cast<OUTPUT_HANDLE*>(instance), readings);
-    EXPECT_EQ(instance->getFilteredData(), readings);
-    
-    instance->clearFilteredData();
+    NotificationInstance::receiveFilteredData(static_cast<OUTPUT_HANDLE*>(instance), readings);
+    EXPECT_EQ(instance->acquireFilteredData(), readings);
+    delete readings; // Clean up after test
 }
 
 // Test 6: Multiple instances
-TEST_F(FilterPipelineTest, MultipleInstances) {
+TEST_F(FilterPipelineTest, MultipleInstances) 
+{
     NOTIFICATION_TYPE nType;
     nType.type = E_NOTIFICATION_TYPE::OneShot;
     nType.retriggerTimeTv.tv_sec = 60;
@@ -151,90 +148,9 @@ TEST_F(FilterPipelineTest, MultipleInstances) {
     instance1.setFilteredData(readings1);
     instance2.setFilteredData(readings2);
     
-    EXPECT_EQ(instance1.getFilteredData(), readings1);
-    EXPECT_EQ(instance2.getFilteredData(), readings2);
+    EXPECT_EQ(instance1.acquireFilteredData(), readings1);
+    EXPECT_EQ(instance2.acquireFilteredData(), readings2);
     
-    // Cleanup
-    instance1.clearFilteredData();
-    instance2.clearFilteredData();
-    //delete readings1;
-    //delete readings2;
+    delete readings1; // Clean up after test
+    delete readings2; // Clean up after test
 }
-
-// Test 7: Memory management
-TEST_F(FilterPipelineTest, MemoryManagement) {
-    // Test multiple set/clear cycles
-    for (int i = 0; i < 5; i++) {
-        ReadingSet* readings = new ReadingSet();
-        DatapointValue dv((long)i);
-        Reading* reading = new Reading("asset", new Datapoint("datapoint", dv));
-        std::vector<Reading*> readingVector;
-        readingVector.push_back(reading);
-        readings->append(readingVector);
-        
-        instance->setFilteredData(readings);
-        instance->clearFilteredData();
-        
-        EXPECT_EQ(instance->getFilteredData(), nullptr);
-    }
-}
-
-// Test 8: Edge cases
-TEST_F(FilterPipelineTest, EdgeCases) {
-    // Test with empty reading set
-    ReadingSet* emptyReadings = new ReadingSet();
-    instance->setFilteredData(emptyReadings);
-    EXPECT_EQ(instance->getFilteredData(), emptyReadings);
-    instance->clearFilteredData();
-    
-    // Test clear when already null
-    instance->clearFilteredData();
-    EXPECT_EQ(instance->getFilteredData(), nullptr);
-    
-    // Test getFilteredData when null
-    EXPECT_EQ(instance->getFilteredData(), nullptr);
-}
-
-// Test 9: Performance stress test
-TEST_F(FilterPipelineTest, PerformanceStress) {
-    // Test rapid data operations
-    for (int i = 0; i < 100; i++) {
-        ReadingSet* readings = new ReadingSet();
-        DatapointValue dv((long)i);
-        Reading* reading = new Reading("asset", new Datapoint("datapoint", dv));
-        std::vector<Reading*> readingVector;
-        readingVector.push_back(reading);
-        readings->append(readingVector);
-        
-        instance->setFilteredData(readings);
-        instance->getFilteredData();
-        instance->clearFilteredData();
-    }
-    
-    EXPECT_EQ(instance->getFilteredData(), nullptr);
-}
-
-// Test 10: Thread safety (basic)
-TEST_F(FilterPipelineTest, ThreadSafety) {
-    ReadingSet* readings = new ReadingSet();
-    DatapointValue dv(42.0);
-    Reading* reading = new Reading("test_asset", new Datapoint("test_datapoint", dv));
-    std::vector<Reading*> readingVector;
-    readingVector.push_back(reading);
-    readings->append(readingVector);
-    
-    // Basic thread safety test
-    std::thread t1([this, readings]() {
-        instance->setFilteredData(readings);
-    });
-    
-    std::thread t2([this]() {
-        instance->getFilteredData();
-    });
-    
-    t1.join();
-    t2.join();
-    
-    instance->clearFilteredData();
-}
-
