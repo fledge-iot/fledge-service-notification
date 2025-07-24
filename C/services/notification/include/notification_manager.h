@@ -20,6 +20,7 @@
 #include <asset_tracking.h>
 #include <filter_pipeline.h>
 #include <filter_plugin.h>
+#include <service_handler.h>
 
 // Forward declaration
 class NotificationService;
@@ -194,7 +195,7 @@ class NotificationDelivery : public NotificationElement
 		std::string		m_text;
 };
 
-class NotificationInstance
+class NotificationInstance : public ServiceHandler
 {
 	public:
 		enum eNotificationType { None, OneShot, Retriggered, Toggled };
@@ -211,6 +212,14 @@ class NotificationInstance
 				     NotificationDelivery* delivery);
 
 		~NotificationInstance();
+
+		// ServiceHandler interface implementation
+		virtual void	shutdown() override {};
+		virtual void	restart() override {};
+		virtual void	configChange(const std::string& category, const std::string& config) override;
+		virtual void	configChildCreate(const std::string& parent_category, const std::string& category, const std::string& config) override {};
+		virtual void	configChildDelete(const std::string& parent_category, const std::string& category) override {};
+		virtual bool	isRunning() override {return true; };
 
 		const std::string&	getName() const { return m_name; };
 		NotificationRule*	getRule() { return m_rule; };
@@ -265,7 +274,6 @@ class NotificationInstance
 		bool			processDataThroughFilter(ReadingSet* readings);
 		ReadingSet*		acquireFilteredData();  // Get filtered data from pipeline
 		void			setFilteredData(ReadingSet* readings);  // Set filtered data from pipeline
-		void			clearFilteredData();  // Clear filtered data
 		bool			hasActiveFilters() const;  // Check if filters are configured and active
 		
 		// Filter pipeline callback functions

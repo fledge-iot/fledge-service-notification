@@ -28,6 +28,7 @@
 #include <reading.h>
 #include <delivery_queue.h>
 #include <filter_pipeline.h>
+#include <config_handler.h>
 
 
 using namespace std;
@@ -203,6 +204,43 @@ NotificationInstance::NotificationInstance(const string& name,
 }
 
 /**
+ * ServiceHandler interface implementation - configChange
+ */
+void NotificationInstance::configChange(const std::string& category, const std::string& config)
+{
+	Logger::getLogger()->info("NotificationInstance '%s' received config change for category '%s'", 
+				 m_name.c_str(), category.c_str());
+	
+	try
+	{
+		if(category == m_name)
+		{
+			return;
+		}
+		else
+		{
+			/*
+			* The category is for one fo the filters. We simply call the Filter Pipeline
+			* instance and get it to deal with sending the configuration to the right filter.
+			* This is done holding the pipeline mutex to prevent the pipeline being changed
+			* during this call and also to hold the ingest thread from running the filters
+			* during reconfiguration.
+			*/
+			Logger::getLogger()->info("NotificationInstance::configChange(): change to config of some filter(s)");
+			lock_guard<mutex> guard(m_pipelineMutex);
+			if (m_filterPipeline)
+			{
+				m_filterPipeline->configChange(category, config);
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		Logger::getLogger()->error("Exception in NotificationInstance config change handler: %s", e.what());
+	}
+}
+
+/**
  * @brief Setup the filter pipeline for this notification instance.
  * 
  * This method creates and configures a filter pipeline for the notification instance.
@@ -232,8 +270,7 @@ bool NotificationInstance::setupFilterPipeline(ManagementClient* mgtClient, Stor
 	// Setup the filter pipeline with proper callback functions
 	if (!m_filterPipeline->setupFiltersPipeline((void *)passToOnwardFilter, (void *)receiveFilteredData, this)) 
 	{
-		delete m_filterPipeline;
-		m_filterPipeline = nullptr;
+		cleanupFilterPipeline();
 		Logger::getLogger()->error("Failed to setup filter pipeline for notification '%s'", m_name.c_str());
 		return false;
 	}
@@ -335,11 +372,6 @@ bool NotificationInstance::hasActiveFilters() const
 	return m_filterPipeline != nullptr && m_filterPipeline->getFilterCount() > 0;
 }
 
-void NotificationInstance::clearFilteredData()
-{
-
-}
-
 /**
  * Add an extra delivery channel
  *
@@ -383,9 +415,6 @@ NotificationInstance::~NotificationInstance()
 {
 	// Cleanup filter pipeline
 	cleanupFilterPipeline();
-	
-	// Clear filtered data
-	clearFilteredData();
 	
 	delete m_rule;
 	delete m_delivery;
@@ -1962,6 +1991,8 @@ bool NotificationInstance::updateInstance(const string& name,
 				a = assets.erase(a);
 			}
 		}
+		
+		cleanupFilterPipeline();
 
 		// Remove current instance
 		instances->removeInstance(name);
@@ -2025,32 +2056,8 @@ bool NotificationManager::removeInstance(const string& instanceName)
 
 	auto r = m_instances.find(instanceName);
 	if (r != m_instances.end())
-	{
-		// Unregister from configuration changes before marking as zombie
-		if (m_service)
-		{
-			m_service->unregisterCategory(instanceName);
-			
-			// Also unregister rule and delivery categories
-			string ruleCategoryName = "rule" + instanceName;
-			m_service->unregisterCategory(ruleCategoryName);
-			
-			string deliveryCategoryName = getDeliveryCategoryName(instanceName, "", false, false);
-			m_service->unregisterCategory(deliveryCategoryName);
-			
-			// Unregister extra delivery categories
-			string extraDeliveryPrefix = getDeliveryCategoryName(instanceName, "", true, true);
-			ConfigCategories categories = m_managerClient->getChildCategories(instanceName);
-			for (unsigned int idx = 0; idx < categories.length(); idx++)
-			{
-				string categoryName = categories[idx]->getName();
-				if (categoryName.compare(0, extraDeliveryPrefix.size(), extraDeliveryPrefix) == 0)
-				{
-					m_service->unregisterCategory(categoryName);
-				}
-			}
-		}
-		
+	{	
+		(*r).second->cleanupFilterPipeline();
 		(*r).second->markAsZombie();
 		ret = true;
 		Logger::getLogger()->debug("Instance %s marked as Zombie and unregistered from config changes",
