@@ -19,7 +19,10 @@
 #include <logger.h>
 #include <asset_tracking.h>
 #include <unordered_set>
-
+#include <mutex>
+#include <condition_variable>
+#include <deque>
+#include <thread>
 #define CATEGORY_DELIVERY_PREFIX "delivery"
 #define CATEGORY_DELIVERY_EXTRA  "_channel_"
 
@@ -104,5 +107,17 @@ class NotificationService : public ServiceAuthHandler
 		bool			m_removeFromCore;
 		AssetTracker*	m_assetTracker;
 		std::unordered_set<std::string> m_AssetTrackerCache;
+
+		// Configuration change handling members
+		std::mutex			m_pendingNewConfigMutex;
+		std::condition_variable	m_cvNewReconf;
+		std::deque<std::tuple<std::string, std::string, std::string, std::string>> m_pendingNewConfig;
+		std::thread			m_configChangeThread;
+
+		// Private methods for configuration change handling
+		void			handlePendingConfigChanges();
+		void			processConfigChange(const std::string& categoryName, const std::string& category);
+		void			processConfigChildCreate(const std::string& parent_category, const std::string& categoryName, const std::string& category);
+		void			processConfigChildDelete(const std::string& parent_category, const std::string& categoryName);
 };
 #endif
