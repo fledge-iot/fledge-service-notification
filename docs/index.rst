@@ -47,6 +47,8 @@ that adds an event engine to the Fledge installation. Notifications can be creat
 
   - The audit log entries that Fledge creates.
 
+  - The alerts raised by the Fledge instance.
+
 Not all notification rule plugins are able to accept and process all
 types of data, therefore you may find particular rules only offer
 a subset of the notification data sources.
@@ -102,6 +104,24 @@ data with the audit log name code as the data name and the data that is
 posted with the audit log entry as the data points of the data. There is a
 limited set of notification rule plugins that can be used with this data as
 it tends to be non-numeric and most plugins expect to sue numeric data.
+
+Alerts
+------
+
+Fledge will alert users to specific actions using the *bell* icon on
+the menubar. These alerts can be used as a source of notification data
+by some of the notification plugins. Most notably the data availability
+plugin.
+
+The use of alerts as notification sources is however limited as these
+alerts are only capable of transporting a string to the notification
+system. This string describes the cause of the alert however. The primary
+use of alerts in notifications is to provide alternate channels for
+the alerts. Rather than simply showing the alert in the user interface
+menubar, the alert may be sent to any of the notification delivery
+channels. This greatly increases the ability to deliver these alerts
+to the consumers of alerts or end users not currently connected to the
+Fledge user interface.
 
 Notifications
 =============
