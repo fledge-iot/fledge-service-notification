@@ -214,11 +214,83 @@ class NotificationInstance : public ServiceHandler
 		~NotificationInstance();
 
 		// ServiceHandler interface implementation
+		/**
+		 * @brief Shutdown the notification instance
+		 * 
+		 * This method is called when the notification instance needs to be shut down.
+		 * Currently implemented as a no-op as notification instances are managed
+		 * by the NotificationManager.
+		 * 
+		 * @note This method is thread-safe
+		 */
 		virtual void	shutdown() override {};
+
+		/**
+		 * @brief Restart the notification instance
+		 * 
+		 * This method is called when the notification instance needs to be restarted.
+		 * Currently implemented as a no-op as notification instances are managed
+		 * by the NotificationManager.
+		 * 
+		 * @note This method is thread-safe
+		 */
 		virtual void	restart() override {};
+
+		/**
+		 * @brief Handle configuration changes for the notification instance
+		 * 
+		 * This method is called when configuration changes occur for this notification
+		 * instance or its associated filter pipeline. It handles both notification
+		 * configuration changes and filter pipeline configuration updates.
+		 * 
+		 * @param category The configuration category that changed
+		 * @param config The new configuration JSON string
+		 * 
+		 * @note This method is thread-safe and handles filter pipeline reconfiguration
+		 * @throws std::exception if configuration processing fails
+		 */
 		virtual void	configChange(const std::string& category, const std::string& config) override;
+
+		/**
+		 * @brief Handle creation of child configuration categories
+		 * 
+		 * This method is called when child configuration categories are created.
+		 * Currently implemented as a no-op as child category management is handled
+		 * by the NotificationManager.
+		 * 
+		 * @param parent_category The parent category name
+		 * @param category The child category name
+		 * @param config The configuration JSON string for the child category
+		 * 
+		 * @note This method is thread-safe
+		 */
 		virtual void	configChildCreate(const std::string& parent_category, const std::string& category, const std::string& config) override {};
+
+		/**
+		 * @brief Handle deletion of child configuration categories
+		 * 
+		 * This method is called when child configuration categories are deleted.
+		 * Currently implemented as a no-op as child category management is handled
+		 * by the NotificationManager.
+		 * 
+		 * @param parent_category The parent category name
+		 * @param category The child category name to be deleted
+		 * 
+		 * @note This method is thread-safe
+		 */
 		virtual void	configChildDelete(const std::string& parent_category, const std::string& category) override {};
+
+		/**
+		 * @brief Check if the notification instance is currently running
+		 * 
+		 * This method indicates whether the notification instance is active and running.
+		 * For notification instances, this always returns true as they are always
+		 * considered running when enabled.
+		 * 
+		 * @return true if the notification instance is running, false otherwise
+		 * 
+		 * @note This method is thread-safe
+		 */
 		virtual bool	isRunning() override {return true; };
 
 		const std::string&	getName() const { return m_name; };

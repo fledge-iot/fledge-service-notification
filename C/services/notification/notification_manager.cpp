@@ -204,7 +204,17 @@ NotificationInstance::NotificationInstance(const string& name,
 }
 
 /**
- * ServiceHandler interface implementation - configChange
+ * @brief Handle configuration changes for the notification instance
+ * 
+ * This method is called when configuration changes occur for this notification
+ * instance or its associated filter pipeline. It handles both notification
+ * configuration changes and filter pipeline configuration updates.
+ * 
+ * @param category The configuration category that changed
+ * @param config The new configuration JSON string
+ * 
+ * @note This method is thread-safe and handles filter pipeline reconfiguration
+ * @throws std::exception if configuration processing fails
  */
 void NotificationInstance::configChange(const std::string& category, const std::string& config)
 {
@@ -215,12 +225,17 @@ void NotificationInstance::configChange(const std::string& category, const std::
 	{
 		if(category == m_name)
 		{
+			/* 
+			 * This is not expected. The service handler should only receive config changes for the filters in the filter pipeline.
+			 * This is a bug.
+			 */
+			Logger::getLogger()->warn("Change to config of notification instance '%s' is received by unexpected service handler.", m_name.c_str());
 			return;
 		}
 		else
 		{
 			/*
-			* The category is for one fo the filters. We simply call the Filter Pipeline
+			* The category is for one of the filters. We simply call the Filter Pipeline
 			* instance and get it to deal with sending the configuration to the right filter.
 			* This is done holding the pipeline mutex to prevent the pipeline being changed
 			* during this call and also to hold the ingest thread from running the filters
@@ -237,6 +252,10 @@ void NotificationInstance::configChange(const std::string& category, const std::
 	catch (const std::exception& e)
 	{
 		Logger::getLogger()->error("Exception in NotificationInstance config change handler: %s", e.what());
+	}
+	catch (...)
+	{
+		Logger::getLogger()->error("Unknown exception in NotificationInstance config change handler");
 	}
 }
 
@@ -322,33 +341,50 @@ bool NotificationInstance::processDataThroughFilter(ReadingSet* readings)
 	// The filter pipeline will process the readings through the callbacks
 	// and the filtered data will be available
 	PipelineElement* first = m_filterPipeline->getFirstFilterPlugin();
+
 	if (first) 
 	{
-			// Check whether filters are set before calling ingest
-	int timeoutCount = 0;
-	const int maxTimeout = 20; // 3 seconds max wait
-	while (!m_filterPipeline->isReady() && timeoutCount < maxTimeout)
-	{
-		Logger::getLogger()->warn("Ingest called before filter pipeline is ready, waiting... (%d/%d)", 
-					 timeoutCount + 1, maxTimeout);
-		std::this_thread::sleep_for(std::chrono::milliseconds(150));
-		timeoutCount++;
-	}
-	
-	if (!m_filterPipeline->isReady())
-	{
-		Logger::getLogger()->error("Filter pipeline not ready after timeout for notification '%s'", m_name.c_str());
-		return false;
-	}
+		// Check whether filters are set before calling ingest
+		int timeoutCount = 0;
+		const int maxTimeout = 20; // 3 seconds max wait
+		while (!m_filterPipeline->isReady() && timeoutCount < maxTimeout)
+		{
+			Logger::getLogger()->warn("Ingest called before filter pipeline is ready, waiting... (%d/%d)", 
+						timeoutCount + 1, maxTimeout);
+			// Sleep for a short time to avoid busy waiting
+			std::this_thread::sleep_for(std::chrono::milliseconds(150));
+			timeoutCount++;
+		}
+		
+		if (!m_filterPipeline->isReady())
+		{
+			// Log error if filter pipeline is not ready after timeout
+			Logger::getLogger()->error("Filter pipeline not ready after 3 second timeout for notification '%s'", m_name.c_str());
+			return false;
+		}
+
 		m_filterPipeline->execute();	// Set the pipeline executing
 		first->ingest(readings);
 	    m_filterPipeline->completeBranch();	// Main branch has completed
 		m_filterPipeline->awaitCompletion();
 		return true;
 	}
+
 	return false;
 }
 
+/**
+ * @brief Acquire filtered data from the filter pipeline
+ * 
+ * This method retrieves the filtered data that was processed through the filter pipeline.
+ * The data is transferred to the caller and the internal storage is cleared to prevent
+ * memory leaks and ensure proper ownership transfer.
+ * 
+ * @return Pointer to the filtered ReadingSet, or nullptr if no data is available
+ * 
+ * @note This method transfers ownership of the data to the caller
+ * @note The caller is responsible for freeing the returned ReadingSet
+ */
 ReadingSet* NotificationInstance::acquireFilteredData()
 {
 	auto data = m_filteredData;
@@ -356,6 +392,18 @@ ReadingSet* NotificationInstance::acquireFilteredData()
 	return data;
 }
 
+/**
+ * @brief Set filtered data from the filter pipeline
+ * 
+ * This method stores filtered data that was processed through the filter pipeline.
+ * Any previously stored data is freed to prevent memory leaks before storing
+ * the new data.
+ * 
+ * @param readings Pointer to the ReadingSet containing filtered data
+ * 
+ * @note This method takes ownership of the provided ReadingSet
+ * @note The caller should not free the ReadingSet after calling this method
+ */
 void NotificationInstance::setFilteredData(ReadingSet* readings)
 {
 	if (m_filteredData) 
@@ -366,6 +414,17 @@ void NotificationInstance::setFilteredData(ReadingSet* readings)
 	m_filteredData = readings;
 }
 
+/**
+ * @brief Check if filters are configured and active
+ * 
+ * This method determines whether the notification instance has an active filter pipeline
+ * with configured filters. It checks both the existence of the filter pipeline and
+ * whether it contains any filters.
+ * 
+ * @return true if filters are configured and active, false otherwise
+ * 
+ * @note This method is thread-safe and uses mutex protection
+ */
 bool NotificationInstance::hasActiveFilters() const
 {
 	std::lock_guard<std::mutex> guard(m_pipelineMutex);
@@ -413,7 +472,6 @@ void NotificationInstance::deleteDeliveryExtra(const std::string &deliveryName)
  */
 NotificationInstance::~NotificationInstance()
 {
-	// Cleanup filter pipeline
 	cleanupFilterPipeline();
 	
 	delete m_rule;
@@ -1804,7 +1862,7 @@ bool NotificationManager::setupInstance(const string& name,
 	if (success) 
 	{		
 		// Add filter pipeline setup
-		if (success && m_storage) 
+		if (m_storage) 
 		{
 			// Setup filter pipeline if configured
 			NotificationInstance* instance = getNotificationInstance(name);
@@ -2305,10 +2363,17 @@ bool NotificationManager::APIdeleteInstance(const string& instanceName)
 }
 
 /**
- * Pass data to the next filter in the pipeline - standalone function
- *
- * @param outHandle	Pointer to the next filter
- * @param readings	Readings to pass to the next filter
+ * @brief Pass data to the next filter in the pipeline
+ * 
+ * This static callback function is used by the filter pipeline to pass data
+ * between filter stages. It receives the output handle pointing to the next
+ * filter in the pipeline and forwards the readings to it.
+ * 
+ * @param outHandle Pointer to the next filter in the pipeline
+ * @param readings Readings to pass to the next filter
+ * 
+ * @note This is a static callback function used by the filter pipeline
+ * @note The function assumes outHandle is a valid PipelineElement pointer
  */
 void NotificationInstance::passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings)
 {
@@ -2320,10 +2385,18 @@ void NotificationInstance::passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGS
 }
 
 /**
- * Use the filtered data (end of pipeline) - standalone function
- *
- * @param outHandle	Pointer to the notification instance
- * @param readings	Filtered readings ready for processing
+ * @brief Receive filtered data from the end of the pipeline
+ * 
+ * This static callback function is called when data reaches the end of the
+ * filter pipeline. It receives the filtered readings and stores them in
+ * the notification instance for later processing.
+ * 
+ * @param outHandle Pointer to the notification instance (cast from void*)
+ * @param readings Filtered readings ready for processing
+ * 
+ * @note This is a static callback function used by the filter pipeline
+ * @note The function includes error handling for invalid parameters
+ * @throws std::exception if casting or data processing fails
  */
 void NotificationInstance::receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings)
 {

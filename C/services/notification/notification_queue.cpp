@@ -406,14 +406,14 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 						filteredReadings = data->getAssetData(); // Fall back to original data
 						break;
 					} 
-				if (!instance->processDataThroughFilter(filteredReadings)) 
-				{
-					Logger::getLogger()->warn("Filter pipeline processing failed for notification '%s'", notificationName.c_str());
-					delete filteredReadings;
-					filteredReadings = data->getAssetData(); // Fall back to original data
-					ownedAssetData = false; // We do not own the original data
-					break;
-				}
+					if (!instance->processDataThroughFilter(filteredReadings)) 
+					{
+						Logger::getLogger()->warn("Filter pipeline processing failed for notification '%s'", notificationName.c_str());
+						delete filteredReadings;
+						filteredReadings = data->getAssetData(); // Fall back to original data
+						ownedAssetData = false; // We do not own the original data
+						break;
+					}
 					
 					filteredReadings = instance->acquireFilteredData(); // Get filtered data from pipeline
 					ownedAssetData = true; // Indicate that we own the filtered data
