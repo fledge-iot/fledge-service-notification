@@ -411,7 +411,7 @@ This will cause the notification to trigger if the value of the statistic
 is less than 1. If we wanted to trigger on a low rather than 0 flow of
 data then we can obviously increase this value. Of course that is reliant
 on the user knowing what a reasonable value is. It might be better, if an
-alert is required when the flow drops of to use the 8Average* filter and
+alert is required when the flow drops of to use the *Average* filter and
 define if the flow rate drop by 10%, or whatever percentage is required,
 below the observed average flow rate then raise a notification.
 

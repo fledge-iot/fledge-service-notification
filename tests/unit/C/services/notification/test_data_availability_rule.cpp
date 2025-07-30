@@ -15,8 +15,6 @@ class DataAvailabilityRuleTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        // Initialize logger for tests
-        Logger::getLogger();
     }
     
     void TearDown() override
