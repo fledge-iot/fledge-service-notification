@@ -12,11 +12,19 @@
 
 #include <logger.h>
 #include <management_client.h>
+#include <storage_client.h>
 #include <rule_plugin.h>
 #include <delivery_plugin.h>
 #include <notification_service.h>
 #include <notification_stats.h>
 #include <asset_tracking.h>
+#include <filter_pipeline.h>
+#include <filter_plugin.h>
+#include <service_handler.h>
+
+// Forward declaration
+class NotificationService;
+
 
 // Notification type repeat time
 #define DEFAULT_RETRIGGER_TIME 60.0
@@ -187,7 +195,7 @@ class NotificationDelivery : public NotificationElement
 		std::string		m_text;
 };
 
-class NotificationInstance
+class NotificationInstance : public ServiceHandler
 {
 	public:
 		enum eNotificationType { None, OneShot, Retriggered, Toggled };
@@ -204,6 +212,86 @@ class NotificationInstance
 				     NotificationDelivery* delivery);
 
 		~NotificationInstance();
+
+		// ServiceHandler interface implementation
+		/**
+		 * @brief Shutdown the notification instance
+		 * 
+		 * This method is called when the notification instance needs to be shut down.
+		 * Currently implemented as a no-op as notification instances are managed
+		 * by the NotificationManager.
+		 * 
+		 * @note This method is thread-safe
+		 */
+		virtual void	shutdown() override {};
+
+		/**
+		 * @brief Restart the notification instance
+		 * 
+		 * This method is called when the notification instance needs to be restarted.
+		 * Currently implemented as a no-op as notification instances are managed
+		 * by the NotificationManager.
+		 * 
+		 * @note This method is thread-safe
+		 */
+		virtual void	restart() override {};
+
+		/**
+		 * @brief Handle configuration changes for the notification instance
+		 * 
+		 * This method is called when configuration changes occur for this notification
+		 * instance or its associated filter pipeline. It handles both notification
+		 * configuration changes and filter pipeline configuration updates.
+		 * 
+		 * @param category The configuration category that changed
+		 * @param config The new configuration JSON string
+		 * 
+		 * @note This method is thread-safe and handles filter pipeline reconfiguration
+		 * @throws std::exception if configuration processing fails
+		 */
+		virtual void	configChange(const std::string& category, const std::string& config) override;
+
+		/**
+		 * @brief Handle creation of child configuration categories
+		 * 
+		 * This method is called when child configuration categories are created.
+		 * Currently implemented as a no-op as child category management is handled
+		 * by the NotificationManager.
+		 * 
+		 * @param parent_category The parent category name
+		 * @param category The child category name
+		 * @param config The configuration JSON string for the child category
+		 * 
+		 * @note This method is thread-safe
+		 */
+		virtual void	configChildCreate(const std::string& parent_category, const std::string& category, const std::string& config) override {};
+
+		/**
+		 * @brief Handle deletion of child configuration categories
+		 * 
+		 * This method is called when child configuration categories are deleted.
+		 * Currently implemented as a no-op as child category management is handled
+		 * by the NotificationManager.
+		 * 
+		 * @param parent_category The parent category name
+		 * @param category The child category name to be deleted
+		 * 
+		 * @note This method is thread-safe
+		 */
+		virtual void	configChildDelete(const std::string& parent_category, const std::string& category) override {};
+
+		/**
+		 * @brief Check if the notification instance is currently running
+		 * 
+		 * This method indicates whether the notification instance is active and running.
+		 * For notification instances, this always returns true as they are always
+		 * considered running when enabled.
+		 * 
+		 * @return true if the notification instance is running, false otherwise
+		 * 
+		 * @note This method is thread-safe
+		 */
+		virtual bool	isRunning() override {return true; };
 
 		const std::string&	getName() const { return m_name; };
 		NotificationRule*	getRule() { return m_rule; };
@@ -250,6 +338,19 @@ class NotificationInstance
 		void addDeliveryExtra( NotificationType type,NotificationDelivery* delivery);
 		void deleteDeliveryExtra(const std::string &deliveryName);
 
+		// Filter pipeline methods
+		bool			hasFilterPipeline() const { return m_filterPipeline != nullptr; };
+		FilterPipeline*	getFilterPipeline() { return m_filterPipeline; };
+		bool			setupFilterPipeline(ManagementClient* mgtClient, StorageClient& storage);
+		void			cleanupFilterPipeline();
+		bool			processDataThroughFilter(ReadingSet* readings);
+		ReadingSet*		acquireFilteredData();  // Get filtered data from pipeline
+		void			setFilteredData(ReadingSet* readings);  // Set filtered data from pipeline
+		bool			hasActiveFilters() const;  // Check if filters are configured and active
+		
+		// Filter pipeline callback functions
+		static void passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings);
+		static void receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings);
 	private:
 		const std::string	m_name;
 		bool			m_enable;
@@ -263,6 +364,12 @@ class NotificationInstance
 		struct timeval		m_lastSentTv;
 		NotificationState	m_state;
 		bool			m_zombie;
+		
+		// Filter pipeline support
+		FilterPipeline*	m_filterPipeline;
+		std::string		m_filterConfig;
+		mutable std::mutex		m_pipelineMutex;  // mutable allows locking in const methods
+		ReadingSet*		m_filteredData;  // Store filtered data from pipeline
 };
 
 typedef NotificationInstance::NotificationType NOTIFICATION_TYPE;
@@ -313,13 +420,23 @@ class NotificationManager
 							      std::string& rulePluginName,
 							      std::string& deliveryPluginName,
 							      NOTIFICATION_TYPE& type,
-							      std::string& customText);
+							      std::string& customText,
+							      std::string& filterPipeline);
 		bool			auditNotification(const std::string& notification,
 							  const std::string& reason);
 		bool			APIdeleteInstance(const string& instanceName);
 		void			updateSentStats() { m_stats.sent++; };
 		void			collectZombies();
+		void			periodicZombieCollection();
 		void            addDeliveryExtra(const string& instanceName, NOTIFICATION_TYPE type,NotificationDelivery* delivery);
+		void			setStorageClient(StorageClient* storage) { m_storage = storage; };
+		ManagementClient*	getManagementClient() { return m_managerClient; };
+		StorageClient*		getStorageClient() { return m_storage; };
+
+		// Filter pipeline support
+		bool			createFilterCategory(const std::string& notificationName, const std::string& filterName);
+		bool			deleteFilterCategory(const std::string& notificationName, const std::string& filterName);
+		std::string		getFilterCategoryName(const std::string& notificationName, const std::string& filterName);
 
 	private:
 		PLUGIN_HANDLE		loadRulePlugin(const std::string& rulePluginName);
@@ -343,6 +460,7 @@ class NotificationManager
 		static NotificationManager*
 					m_instance;
 		ManagementClient* 	m_managerClient;
+		StorageClient*		m_storage;
 		std::map<std::string, NotificationInstance *>
 					m_instances;
 		std::map<std::string, BUILTIN_RULE_FN>

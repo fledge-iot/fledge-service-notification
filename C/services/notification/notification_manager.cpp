@@ -16,6 +16,7 @@
 #include <string>
 
 #include <notification_manager.h>
+#include <notification_service.h>
 #include <rule_plugin.h>
 #include <delivery_plugin.h>
 #include <string.h>
@@ -26,6 +27,8 @@
 #include <notification_queue.h>
 #include <reading.h>
 #include <delivery_queue.h>
+#include <filter_pipeline.h>
+#include <config_handler.h>
 
 
 using namespace std;
@@ -190,12 +193,242 @@ NotificationInstance::NotificationInstance(const string& name,
 					   m_type(type),
 					   m_rule(rule),
 					   m_delivery(delivery),
-					   m_zombie(false)
+					   m_zombie(false),
+					   m_filterPipeline(nullptr),
+					   m_filteredData(nullptr)
 {
 	// Set initial state for notification delivery
 	m_lastSentTv.tv_sec = 0;
 	m_lastSentTv.tv_usec = 0;
 	m_state = NotificationInstance::StateCleared;
+}
+
+/**
+ * @brief Handle configuration changes for the notification instance
+ * 
+ * This method is called when configuration changes occur for this notification
+ * instance or its associated filter pipeline. It handles both notification
+ * configuration changes and filter pipeline configuration updates.
+ * 
+ * @param category The configuration category that changed
+ * @param config The new configuration JSON string
+ * 
+ * @note This method is thread-safe and handles filter pipeline reconfiguration
+ * @throws std::exception if configuration processing fails
+ */
+void NotificationInstance::configChange(const std::string& category, const std::string& config)
+{
+	Logger::getLogger()->info("NotificationInstance '%s' received config change for category '%s'", 
+				 m_name.c_str(), category.c_str());
+	
+	try
+	{
+		if(category == m_name)
+		{
+			/* 
+			 * This is not expected. The service handler should only receive config changes for the filters in the filter pipeline.
+			 * This is a bug.
+			 */
+			Logger::getLogger()->warn("Change to config of notification instance '%s' is received by unexpected service handler.", m_name.c_str());
+			return;
+		}
+		else
+		{
+			/*
+			* The category is for one of the filters. We simply call the Filter Pipeline
+			* instance and get it to deal with sending the configuration to the right filter.
+			* This is done holding the pipeline mutex to prevent the pipeline being changed
+			* during this call and also to hold the ingest thread from running the filters
+			* during reconfiguration.
+			*/
+			Logger::getLogger()->info("NotificationInstance::configChange(): change to config of some filter(s)");
+			lock_guard<mutex> guard(m_pipelineMutex);
+			if (m_filterPipeline)
+			{
+				m_filterPipeline->configChange(category, config);
+			}
+		}
+	}
+	catch (const std::exception& e)
+	{
+		Logger::getLogger()->error("Exception in NotificationInstance config change handler: %s", e.what());
+	}
+	catch (...)
+	{
+		Logger::getLogger()->error("Unknown exception in NotificationInstance config change handler");
+	}
+}
+
+/**
+ * @brief Setup the filter pipeline for this notification instance.
+ * 
+ * This method creates and configures a filter pipeline for the notification instance.
+ * The pipeline will process incoming data through configured filters before evaluation.
+ * 
+ * @param mgtClient Management client pointer for configuration access
+ * @param storage Storage client reference for data operations
+ * @return true if setup was successful, false otherwise
+ * 
+ * @note This method is thread-safe and should be called during notification setup
+ */
+bool NotificationInstance::setupFilterPipeline(ManagementClient* mgtClient, StorageClient& storage)
+{
+	std::lock_guard<std::mutex> guard(m_pipelineMutex);
+	cleanupFilterPipeline();
+	m_filterPipeline = new FilterPipeline(mgtClient, storage, m_name);
+	
+	// Load filters as specified in the configuration (category name = m_name)
+	if (!m_filterPipeline->loadFilters(m_name))
+	{
+		delete m_filterPipeline;
+		m_filterPipeline = nullptr;
+		Logger::getLogger()->error("Failed to load filter pipeline for notification '%s'", m_name.c_str());
+		return false;
+	}
+
+	// Setup the filter pipeline with proper callback functions
+	if (!m_filterPipeline->setupFiltersPipeline((void *)passToOnwardFilter, (void *)receiveFilteredData, this)) 
+	{
+		cleanupFilterPipeline();
+		Logger::getLogger()->error("Failed to setup filter pipeline for notification '%s'", m_name.c_str());
+		return false;
+	}
+
+	Logger::getLogger()->info("Filter pipeline setup for notification '%s'", m_name.c_str());
+	return true;
+}
+
+/**
+ * @brief Cleanup the filter pipeline for this notification instance.
+ * 
+ * This method properly cleans up the filter pipeline resources, including
+ * shutting down filters and freeing allocated memory. Should be called
+ * when the notification instance is being destroyed or reconfigured.
+ * 
+ * @note This method is thread-safe and should be called with pipeline mutex held
+ */
+void NotificationInstance::cleanupFilterPipeline()
+{
+	//m_pipelineMutex shuould be locked by the caller
+	if (m_filterPipeline) 
+	{
+		m_filterPipeline->cleanupFilters(m_name);
+		delete m_filterPipeline;
+		m_filterPipeline = nullptr;
+		Logger::getLogger()->info("Filter pipeline cleaned up for notification '%s'", m_name.c_str());
+	}
+}
+
+/**
+ * @brief Process a ReadingSet through the filter pipeline if present.
+ * 
+ * This method processes incoming data through the configured filter pipeline.
+ * The filtered data is stored and can be retrieved via acquireFilteredData().
+ * 
+ * @param readings Pointer to ReadingSet to process through the pipeline
+ * @return true if processed successfully, false if no pipeline or processing failed
+ * 
+ * @note This method is thread-safe and includes timeout protection for pipeline readiness
+ */
+bool NotificationInstance::processDataThroughFilter(ReadingSet* readings)
+{
+	std::lock_guard<std::mutex> guard(m_pipelineMutex);
+	if (!m_filterPipeline) {
+		return false;
+	}
+
+	// Execute the filter pipeline with the readings
+	// The filter pipeline will process the readings through the callbacks
+	// and the filtered data will be available
+	PipelineElement* first = m_filterPipeline->getFirstFilterPlugin();
+
+	if (first) 
+	{
+		// Check whether filters are set before calling ingest
+		int timeoutCount = 0;
+		const int maxTimeout = 20; // 3 seconds max wait
+		while (!m_filterPipeline->isReady() && timeoutCount < maxTimeout)
+		{
+			Logger::getLogger()->warn("Ingest called before filter pipeline is ready, waiting... (%d/%d)", 
+						timeoutCount + 1, maxTimeout);
+			// Sleep for a short time to avoid busy waiting
+			std::this_thread::sleep_for(std::chrono::milliseconds(150));
+			timeoutCount++;
+		}
+		
+		if (!m_filterPipeline->isReady())
+		{
+			// Log error if filter pipeline is not ready after timeout
+			Logger::getLogger()->error("Filter pipeline not ready after 3 second timeout for notification '%s'", m_name.c_str());
+			return false;
+		}
+
+		m_filterPipeline->execute();	// Set the pipeline executing
+		first->ingest(readings);
+	    m_filterPipeline->completeBranch();	// Main branch has completed
+		m_filterPipeline->awaitCompletion();
+		return true;
+	}
+
+	return false;
+}
+
+/**
+ * @brief Acquire filtered data from the filter pipeline
+ * 
+ * This method retrieves the filtered data that was processed through the filter pipeline.
+ * The data is transferred to the caller and the internal storage is cleared to prevent
+ * memory leaks and ensure proper ownership transfer.
+ * 
+ * @return Pointer to the filtered ReadingSet, or nullptr if no data is available
+ * 
+ * @note This method transfers ownership of the data to the caller
+ * @note The caller is responsible for freeing the returned ReadingSet
+ */
+ReadingSet* NotificationInstance::acquireFilteredData()
+{
+	auto data = m_filteredData;
+	m_filteredData = nullptr; // Clear the filtered data after retrieval
+	return data;
+}
+
+/**
+ * @brief Set filtered data from the filter pipeline
+ * 
+ * This method stores filtered data that was processed through the filter pipeline.
+ * Any previously stored data is freed to prevent memory leaks before storing
+ * the new data.
+ * 
+ * @param readings Pointer to the ReadingSet containing filtered data
+ * 
+ * @note This method takes ownership of the provided ReadingSet
+ * @note The caller should not free the ReadingSet after calling this method
+ */
+void NotificationInstance::setFilteredData(ReadingSet* readings)
+{
+	if (m_filteredData) 
+	{
+		delete m_filteredData; // Free previous filtered data
+	}
+
+	m_filteredData = readings;
+}
+
+/**
+ * @brief Check if filters are configured and active
+ * 
+ * This method determines whether the notification instance has an active filter pipeline
+ * with configured filters. It checks both the existence of the filter pipeline and
+ * whether it contains any filters.
+ * 
+ * @return true if filters are configured and active, false otherwise
+ * 
+ * @note This method is thread-safe and uses mutex protection
+ */
+bool NotificationInstance::hasActiveFilters() const
+{
+	std::lock_guard<std::mutex> guard(m_pipelineMutex);
+	return m_filterPipeline != nullptr && m_filterPipeline->getFilterCount() > 0;
 }
 
 /**
@@ -239,6 +472,8 @@ void NotificationInstance::deleteDeliveryExtra(const std::string &deliveryName)
  */
 NotificationInstance::~NotificationInstance()
 {
+	cleanupFilterPipeline();
+	
 	delete m_rule;
 	delete m_delivery;
 }
@@ -308,6 +543,7 @@ NotificationManager::NotificationManager(const std::string& serviceName,
 					 NotificationService* service) :
 					 m_name(serviceName),
 					 m_managerClient(managerClient),
+					 m_storage(nullptr),
 					 m_service(service)
 {
 	NotificationManager::m_instance = this;
@@ -999,7 +1235,11 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			 "\"type\": \"boolean\", \"default\": \"false\"}, " 
 		   "\"retrigger_time\": {\"description\" : \"Retrigger time in seconds for sending a new notification.\", "
 			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"6\", "
-			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.0\"} }";
+			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.0\"}, "
+		   "\"filter\": {\"description\": \"Filter pipeline\", "
+			 "\"displayName\" : \"Filter Pipeline\", \"order\" : \"7\","
+			 "\"type\": \"JSON\", \"default\": \"{\\\"pipeline\\\": []}\", "
+			 "\"readonly\": \"true\"} }";
 
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
@@ -1026,6 +1266,11 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 							    children);
 			// Register category for configuration updates
 			m_service->registerCategory(name);
+
+			// Create the filter pipeline config category for this notification
+			// (initially empty pipeline)
+			string filterConfig = "{\\\"pipeline\\\": []}";
+			m_managerClient->setCategoryItemValue(name, "filter", filterConfig);
 
 			m_stats.created++;
 			m_stats.total++;
@@ -1152,7 +1397,7 @@ string NotificationManager::getDeliveryCategoryName(const string& NotificationNa
  * @return		DeliveryPlugin object pointer on success,
  *			NULL otherwise
  */
-DeliveryPlugin* NotificationManager::createDeliveryCategory(const string& name, const string& delivery, bool extraDelivery)
+DeliveryPlugin* NotificationManager::createDeliveryCategory(const std::string& name, const std::string& delivery, bool extraDelivery)
 {
 	DeliveryPlugin* deliveryPlugin = this->createDeliveryPlugin(delivery);
 
@@ -1354,12 +1599,14 @@ bool NotificationManager::setupRuleDeliveryFirst(const string& name, const Confi
 	string deliveryPluginName;
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	if (!this->getConfigurationItems(config,
 					 enabled,
 					 rulePluginName,
 					 deliveryPluginName,
 					 type,
-					 customText))
+					 customText,
+					 filterPipeline))
 	{
 		return false;
 	}
@@ -1497,12 +1744,14 @@ bool NotificationManager::addDelivery(const ConfigCategory& config, const string
 
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	if (!this->getConfigurationItems(config,
 					 enabled,
 					 rulePluginName,
 					 deliveryPluginNameFirst,
 					 type,
-					 customText))
+					 customText,
+					 filterPipeline))
 	{
 		return false;
 	}
@@ -1610,8 +1859,19 @@ bool NotificationManager::setupInstance(const string& name,
 
 	success = setupRuleDeliveryFirst (name, config);
 
-	if (success) {
-
+	if (success) 
+	{		
+		// Add filter pipeline setup
+		if (m_storage) 
+		{
+			// Setup filter pipeline if configured
+			NotificationInstance* instance = getNotificationInstance(name);
+			if (instance) 
+			{
+				instance->setupFilterPipeline(m_managerClient, *m_storage);
+			}
+		}
+		// we register for configuration changes for the delivery extra and filters
 		success = setupDeliveryExtra (name, config);
 	}
 
@@ -1633,6 +1893,7 @@ bool NotificationInstance::updateInstance(const string& name,
 	string deliveryPluginName;
 	NOTIFICATION_TYPE type;
 	string customText;
+	string filterPipeline;
 	NotificationManager* instances =  NotificationManager::getInstance();
 	// Parse new configuration object
 	if (!instances->getConfigurationItems(newConfig,
@@ -1640,7 +1901,8 @@ bool NotificationInstance::updateInstance(const string& name,
 					      rulePluginName,
 					      deliveryPluginName,
 					      type,
-					      customText))
+					      customText,
+					      filterPipeline))
 	{
 		return false;
 	}
@@ -1753,13 +2015,14 @@ bool NotificationInstance::updateInstance(const string& name,
 	 * 2- Notification type change: update current instance
 	 * 3- Custom text: it only affects delivery plugin:
 	 *	easy way: remove instance & create a new one
-	 * 4- ....
+	 * 4- Filter pipeline changes: remove instance & create a new one
 	 */
-
 	if (!this->getRulePlugin() ||
 	    !this->getDeliveryPlugin() ||
 	    rulePluginName.compare(this->getRulePlugin()->getName()) != 0 ||
-	    deliveryPluginName.compare(this->getDeliveryPlugin()->getName()) != 0)
+	    deliveryPluginName.compare(this->getDeliveryPlugin()->getName()) != 0 ||
+	    (this->getFilterPipeline() && this->getFilterPipeline()->hasChanged(filterPipeline)) ||
+	    (!this->getFilterPipeline() && !filterPipeline.empty()))
 	{
 		bool retCode = false;
 
@@ -1786,6 +2049,8 @@ bool NotificationInstance::updateInstance(const string& name,
 				a = assets.erase(a);
 			}
 		}
+		
+		cleanupFilterPipeline();
 
 		// Remove current instance
 		instances->removeInstance(name);
@@ -1849,10 +2114,11 @@ bool NotificationManager::removeInstance(const string& instanceName)
 
 	auto r = m_instances.find(instanceName);
 	if (r != m_instances.end())
-	{
+	{	
+		(*r).second->cleanupFilterPipeline();
 		(*r).second->markAsZombie();
 		ret = true;
-		Logger::getLogger()->debug("Instance %s marked as Zombie",
+		Logger::getLogger()->debug("Instance %s marked as Zombie and unregistered from config changes",
 					   instanceName.c_str());
 	}
 	return ret;
@@ -1892,6 +2158,23 @@ void NotificationManager::collectZombies()
 }
 
 /**
+ * Periodic zombie collection - should be called periodically to clean up
+ * zombie instances and prevent memory leaks
+ */
+void NotificationManager::periodicZombieCollection()
+{
+	static time_t lastCollection = 0;
+	time_t now = time(NULL);
+	
+	// Collect zombies every 30 seconds
+	if (now - lastCollection >= 30)
+	{
+		collectZombies();
+		lastCollection = now;
+	}
+}
+
+/**
  * Get instance configuration items.
  *
  * @param    config			The instance configuration object.
@@ -1908,7 +2191,8 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 						string& rulePluginName,
 						string& deliveryPluginName,
 						NOTIFICATION_TYPE& nType,
-						string& customText)
+						string& customText,
+						string& filterPipeline)
 {
 	long retriggerTime = DEFAULT_RETRIGGER_TIME;
 	struct timeval retriggerTimeTv;
@@ -1966,6 +2250,12 @@ bool NotificationManager::getConfigurationItems(const ConfigCategory& config,
 	if (config.itemExists("text"))
 	{
 		customText = config.getValue("text");
+	}
+
+	// Get filter pipeline configuration
+	if (config.itemExists("filter"))
+	{
+		filterPipeline = config.getValue("filter");
 	}
 
 	if (enabled && rulePluginName.empty())
@@ -2070,4 +2360,60 @@ bool NotificationManager::APIdeleteInstance(const string& instanceName)
 	}
 
 	return ret;
+}
+
+/**
+ * @brief Pass data to the next filter in the pipeline
+ * 
+ * This static callback function is used by the filter pipeline to pass data
+ * between filter stages. It receives the output handle pointing to the next
+ * filter in the pipeline and forwards the readings to it.
+ * 
+ * @param outHandle Pointer to the next filter in the pipeline
+ * @param readings Readings to pass to the next filter
+ * 
+ * @note This is a static callback function used by the filter pipeline
+ * @note The function assumes outHandle is a valid PipelineElement pointer
+ */
+void NotificationInstance::passToOnwardFilter(OUTPUT_HANDLE *outHandle, READINGSET *readings)
+{
+	// Get next filter in the pipeline
+	PipelineElement *next = (PipelineElement *)outHandle;
+
+	// Pass readings to the next stage in the pipeline
+	next->ingest(readings);
+}
+
+/**
+ * @brief Receive filtered data from the end of the pipeline
+ * 
+ * This static callback function is called when data reaches the end of the
+ * filter pipeline. It receives the filtered readings and stores them in
+ * the notification instance for later processing.
+ * 
+ * @param outHandle Pointer to the notification instance (cast from void*)
+ * @param readings Filtered readings ready for processing
+ * 
+ * @note This is a static callback function used by the filter pipeline
+ * @note The function includes error handling for invalid parameters
+ * @throws std::exception if casting or data processing fails
+ */
+void NotificationInstance::receiveFilteredData(OUTPUT_HANDLE *outHandle, READINGSET *readings)
+{
+	if (!outHandle || !readings) 
+	{
+		Logger::getLogger()->error("receiveFilteredData: Invalid parameters");
+		return;
+	}
+	
+	try 
+	{
+		// Cast outHandle to the notification instance
+		NotificationInstance* instance = static_cast<NotificationInstance*>(outHandle);
+		instance->setFilteredData(readings);
+	}
+	catch (const std::exception& e)
+	{
+		Logger::getLogger()->error("receiveFilteredData: Exception in data processing: %s", e.what());
+	}
 }

@@ -389,12 +389,51 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 		if (instance &&
 		    instance->isEnabled())
 		{
+			// If the instance has a filter pipeline, process the data through it
+			ReadingSet* filteredReadings = data->getAssetData();
+			bool ownedAssetData = false;
+
+			if (instance->hasActiveFilters()) 
+			{
+				do
+				{
+					// Make a deep copy to avoid modifying the original data for other notifications
+					filteredReadings = new ReadingSet();
+					if (!filteredReadings->copy(*data->getAssetData())) 
+					{
+						Logger::getLogger()->error("Failed to copy ReadingSet for notification '%s'", notificationName.c_str());
+						delete filteredReadings;
+						filteredReadings = data->getAssetData(); // Fall back to original data
+						break;
+					} 
+					if (!instance->processDataThroughFilter(filteredReadings)) 
+					{
+						Logger::getLogger()->warn("Filter pipeline processing failed for notification '%s'", notificationName.c_str());
+						delete filteredReadings;
+						filteredReadings = data->getAssetData(); // Fall back to original data
+						ownedAssetData = false; // We do not own the original data
+						break;
+					}
+					
+					filteredReadings = instance->acquireFilteredData(); // Get filtered data from pipeline
+					ownedAssetData = true; // Indicate that we own the filtered data
+				}while(0);
+			}
+			
 			// Get ruleName for the assetName
 			string ruleName = instance->getRule()->getName();
-			// Feed buffer[ruleName][theAsset] with Readings data
+			// Feed buffer[ruleName][theAsset] with (possibly filtered) Readings data
 			ret = this->feedDataBuffer(ruleName,
-						   assetName,
-						   data->getAssetData());
+								   assetName,
+								   filteredReadings);
+			
+			// If we created a filtered copy, clean up after feeding
+			if (ownedAssetData) 
+			{
+				delete filteredReadings;
+				filteredReadings = nullptr;
+			}
+			
 		}
 		else
 		{

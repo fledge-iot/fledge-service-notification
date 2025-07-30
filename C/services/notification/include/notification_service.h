@@ -19,6 +19,9 @@
 #include <logger.h>
 #include <asset_tracking.h>
 #include <unordered_set>
+
+// Forward declaration
+class NotificationManager;
 #include <mutex>
 #include <condition_variable>
 #include <deque>
@@ -55,6 +58,7 @@ class NotificationService : public ServiceAuthHandler
 
 		void			registerCategory(const std::string& categoryName);
 		void   			registerCategoryChild(const std::string& categoryName);
+		void			unregisterCategory(const std::string& categoryName);
 		void   			updateAssetTrackerCache(AssetTrackingTuple tuple)
 						{
 							std::string track = tuple.m_assetName + tuple.m_eventName + tuple.m_serviceName + tuple.m_pluginName;
@@ -93,6 +97,7 @@ class NotificationService : public ServiceAuthHandler
 		NotificationApi*	m_api;
 		ManagementApi*		m_managementApi;
 		StorageClient*		m_storage;
+		NotificationManager*	m_notificationManager;
 		std::map<std::string, bool>
 					m_registerCategories;
 		std::map<std::string, bool>
