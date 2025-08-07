@@ -1221,7 +1221,8 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			"description": "The name of this notification",
 			"readonly": "true",
 			"type": "string",
-			"default": "") + "\"" + escapedName + QUOTE(\"},
+			"default": "PLACEHOLDER_NAME"
+		},
 		"description": {
 			"description": "Description of this notification",
 			"displayName": "Description",
@@ -1270,7 +1271,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			"displayName": "Retrigger Time",
 			"order": "7",
 			"type": "float",
-			"default": ") + "\"" + defaultRetriggerTime + QUOTE(\",
+			"default": "PLACEHOLDER_RETRIGGER_TIME",
 			"minimum": "0.0"
 		},
 		"filter": {
@@ -1282,6 +1283,17 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			"readonly": "true"
 		}
 	});
+	
+	// Replace placeholders with actual values
+	size_t pos = payload.find("PLACEHOLDER_NAME");
+	if (pos != string::npos) {
+		payload.replace(pos, strlen("PLACEHOLDER_NAME"), escapedName);
+	}
+	
+	pos = payload.find("PLACEHOLDER_RETRIGGER_TIME");
+	if (pos != string::npos) {
+		payload.replace(pos, strlen("PLACEHOLDER_RETRIGGER_TIME"), defaultRetriggerTime);
+	}
 	
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
