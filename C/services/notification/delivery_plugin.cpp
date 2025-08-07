@@ -242,7 +242,6 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 	collectMacroInfo(rval, macros);
 	if (macros.size())
 	{
-
 		Document doc;
 		doc.Parse(reason.c_str());
 		if (doc.HasParseError())
@@ -258,7 +257,13 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 		}
 		Value& data = doc["data"];
 		Value::ConstMemberIterator itr = data.MemberBegin();
+		if (itr == data.MemberEnd())
+		{
+			Logger::getLogger()->warn("Unable to perform macro substitution in the notifcation alert. No data element has no children, reason document %s", reason.c_str());
+			return rval;
+		}
 		const Value& v = itr->value;
+		string assetName = itr->name.GetString();
 
 
 		// Replace Macros by datapoint value
@@ -278,6 +283,17 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 				else if (v[it->name.c_str()].IsDouble())
 				{
 					val = to_string(v[it->name.c_str()].GetDouble());
+					// Trim trailing 0's
+					size_t len = val.length();
+					while (len > 0 && val[len-1] == '0')
+					{
+						len--;
+					}
+					if (len > 0)
+					{
+						val = val.substr(0, len);
+					}
+					
 				}
 				else
 				{

@@ -41,6 +41,7 @@ class DeliveryPlugin : public Plugin
 		void			registerIngest(void *func, void *data);
 		void			registerService(void *func, void *data);
 		bool			isEnabled() { return m_enabled; };
+		std::string		expandMacros(const std::string& message, const std::string& reason);
 
 	private:
 		PLUGIN_HANDLE		(*pluginInit)(const ConfigCategory* config);
@@ -75,7 +76,6 @@ class DeliveryPlugin : public Plugin
 				std::string			def;
 		};
 		void			collectMacroInfo(const std::string& str, std::vector<Macro>& macros);
-		std::string		expandMacros(const std::string& message, const std::string& reason);
 
 	public:
 		// Persist plugin data
