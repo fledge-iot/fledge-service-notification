@@ -9,8 +9,10 @@
  */
 
 #include <delivery_plugin.h>
+#include <rapidjson/document.h>
 
 using namespace std;
+using namespace rapidjson;
 
 
 // DeliveryPlugin constructor
@@ -115,7 +117,7 @@ bool DeliveryPlugin::deliver(const std::string& deliveryName,
 					     deliveryName,
 					     notificationName,
 					     triggerReason,
-					     message);
+					     expandMacros(message, triggerReason));
 	}
 	unsigned int duration = time(0) - start;
 	if (duration > 5)
@@ -187,4 +189,114 @@ void DeliveryPlugin::registerService(void *func, void *data)
 	{
 		(*pluginRegisterService)(m_instance, func, data);
 	}
+}
+
+
+/**
+ * Create the information about the macros to substitute in the given string
+ *
+ * @param str	The string we are substituting
+ * @param macros	Vector of macros to build up
+ */
+void DeliveryPlugin::collectMacroInfo(const string& str, vector<Macro>& macros)
+{
+	string::size_type start = str.find('$');
+	string::size_type end = str.find('$', start + 1);
+
+	while (start != string::npos && end != string::npos) 
+	{
+		string::size_type bar = str.find('|', start + 1);
+		if (bar != string::npos && bar < end && bar > start + 1) 
+		{
+			string def = str.substr(bar + 1, end - bar - 1);
+			macros.emplace_back(Macro(str.substr(start + 1, bar - start - 1), start, def));
+		}
+		else if (end > start + 1)
+		{
+			macros.emplace_back(Macro(str.substr(start + 1, end - start - 1), start));
+		}
+		start = str.find('$', end + 1);
+		end = str.find('$', start + 1);
+	}
+}
+
+/**
+ * Substitute values from the reason into the string.
+ * Macros are of the form $key$ or 
+ * $key|default$. Where key is one of the keys found in
+ * the notification data of the reason document. Keys
+ * are typical datapoint names that triggered the alert
+ * for readings, statis values for statistics data and
+ * messages for alert data.
+ *
+ * @param message	The string to substitute into
+ * @param reason	The notification reason from which to pull data
+ * @return string	The substituted string
+ */
+string  DeliveryPlugin::expandMacros(const string& message, const string& reason)
+{
+	string rval = message;
+	vector<Macro> macros;
+	Logger::getLogger()->debug("Expand macros in messge %s with reason %s",
+			message.c_str(), reason.c_str());
+	collectMacroInfo(rval, macros);
+	if (macros.size())
+	{
+
+		Document doc;
+		doc.Parse(reason.c_str());
+		if (doc.HasParseError())
+		{
+			// Failed to parse the reason, ignore macros
+			Logger::getLogger()->warn("Unable to parse reason document, macro substitutios withinthe notification will be ignored. The reason document is:  %s", reason.c_str());
+			return rval;
+		}
+		if (!doc.HasMember("data"))
+		{
+			Logger::getLogger()->warn("Unable to perform macro substitution in the notifcation alert. No data element was found in reason document %s", reason.c_str());
+			return rval;
+		}
+		Value& data = doc["data"];
+		Value::ConstMemberIterator itr = data.MemberBegin();
+		const Value& v = itr->value;
+
+
+		// Replace Macros by datapoint value
+		for (auto it =  macros.rbegin(); it != macros.rend(); ++it)
+		{
+			if (v.HasMember(it->name.c_str()))
+			{
+				string val;
+				if (v[it->name.c_str()].IsString())
+				{
+					val = v[it->name.c_str()].GetString();
+				}
+				else if (v[it->name.c_str()].IsInt64())
+				{
+					val = to_string(v[it->name.c_str()].GetInt64());
+				}
+				else if (v[it->name.c_str()].IsDouble())
+				{
+					val = to_string(v[it->name.c_str()].GetDouble());
+				}
+				else
+				{
+					Logger::getLogger()->warn("The datapoint %s cannot be used as a macro substitution as it is not a string or numeric value",it->name.c_str());
+					continue;
+				}
+				rval.replace(it->start, it->name.length()+2
+							+ (it->def.empty() ? 0 : it->def.length() + 1),
+							val );
+			}
+			else if (!it->def.empty())
+			{
+				rval.replace(it->start, it->name.length() + it->def.length() + 3, it->def);
+			}
+			else
+			{
+				rval.replace(it->start, it->name.length()+2, "");
+			}
+		}
+	}
+	return rval;
 }

@@ -54,6 +54,28 @@ class DeliveryPlugin : public Plugin
 							        const std::string& newConfig);
 		void			(*pluginStartPtr)(PLUGIN_HANDLE);
 		void			setEnabled(const ConfigCategory& config);
+		class Macro {
+			public:
+				Macro(const std::string& dpname, std::string::size_type s,
+						const std::string& defValue) :
+					start(s), name(dpname), def(defValue)
+
+				{
+				};
+				Macro(const std::string& dpname, std::string::size_type s) :
+					start(s), name(dpname)
+
+				{
+				};
+				// Start of variable to substitute
+				std::string::size_type		start;
+				// Name of variable to substitute
+				std::string			name;
+				// Default value to substitute
+				std::string			def;
+		};
+		void			collectMacroInfo(const std::string& str, std::vector<Macro>& macros);
+		std::string		expandMacros(const std::string& message, const std::string& reason);
 
 	public:
 		// Persist plugin data

@@ -24,6 +24,7 @@
 #include <notification_queue.h>
 #include <delivery_queue.h>
 
+
 using namespace std;
 
 DeliveryQueue* DeliveryQueue::m_instance = 0;
@@ -436,10 +437,11 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 	{
 		// Call plugin_deliver
 		std::string reason = elem->getData()->getReason();
+		std::string message = elem->getData()->getMessage();
 		bool deliverSuccessFlag =  elem->getPlugin()->deliver(elem->getName(),
 					   elem->getData()->getNotificationName(),
 					   reason,
-					   elem->getData()->getMessage());
+					   message);
 
 		std::string instanceName;
                 const NotificationInstance* nInstance = elem->getData()->getInstance();
@@ -470,3 +472,4 @@ void DeliveryQueue::processDelivery(DeliveryQueueElement* elem)
 	}
 #endif
 }
+
