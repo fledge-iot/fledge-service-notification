@@ -20,6 +20,11 @@
 .. |ADHRule| image:: images/ADHRule.jpg
 .. |ADHRatePerMinute| image:: images/ADHRatePerMinute.jpg
 .. |ServiceRestarted| image:: images/ServiceRestarted.jpg
+.. |slackalert_1| image:: images/slackalert_1.jpg
+.. |slackalert_2| image:: images/slackalert_2.jpg
+.. |slackalert_3| image:: images/slackalert_3.jpg
+.. |slackalert_4| image:: images/slackalert_4.jpg
+.. |slackalert_5| image:: images/slackalert_5.jpg
 
 .. Links
 .. |rule_plugins| raw:: html
@@ -40,7 +45,7 @@ Notifications Service
 
 Fledge supports an optional service, known as the notification service
 that adds an event engine to the Fledge installation. Notifications can
-be created based upon various conditions that make usee of;
+be created based upon various conditions that make use of;
 
   - The data that is flowing through Fledge.
 
@@ -110,21 +115,21 @@ Alerts
 ------
 
 Fledge will alert users to specific actions using the *bell* icon on
-the menubar. These alerts can be used as a source of notification data
+the menu bar. These alerts can be used as a source of notification data
 by some of the notification plugins. Most notably the data availability
 plugin.
 
 The use of alerts as a source for notifications is however limited as these
 alerts are only capable of transporting a string to the notification
 system. This string describes the cause of the alert, therefore there is little
-inthe way of processing that can be done when alerts are used as a notification
+in the way of processing that can be done when alerts are used as a notification
 source.
 
 The primary use of alerts in notifications is to provide alternate channels for
 the delivery of these alerts. Rather than simply showing the alert in the user interface
-menubar, the alert may be sent to any of the notification delivery
+menu bar, the alert may be sent to any of the notification delivery
 channels. This greatly increases the ability to deliver these alerts
-to programatic consumers of the alerts or end users not currently connected to the
+to programmatic consumers of the alerts or end users not currently connected to the
 Fledge user interface.
 
 Notifications
@@ -453,3 +458,40 @@ We leave the *Asset Code* blank as we do not wish to monitor any reading data.
 +--------------------+
 
 Each time a *SRVRG* audit entry is made a notification will be sent, again any of the notification delivery mechanisms can be used to support the delivery of this notification.
+
+Alert Example
+-------------
+
+Alerts are normally displayed via the Fledge user interface, a bell icon in the status bar will show a count of outstanding alerts. If the user hovers over this bell icon the alerts will be displayed. This gives useful information when connected to the user interface, however it might be more useful to be able to have those alerts proactively delivered to another device or system. Using the notification service and the alert datasource, these alerts may be delivered via any of the notification delivery plugins supported by Fledge.
+
+In this example we will show how to deliver those alert to an instant messaging service such as Slack.
+
+We will use the *Data Availability* notification rule plugin in this example and set the source of data for the plugin to be *Alerts*.
+
++----------------+
+| |slackalert_1| |
++----------------+
+
+We will select the *Slack* plugin as the delivery plugin and configure it.
+
++----------------+
+| |slackalert_2| |
++----------------+
+
+After completing the configuration of the notification whenever we get an alert raised in Fledge we will receive a Slack message.
+
++----------------+
+| |slackalert_3| |
++----------------+
+
+This is useful, but could be made better if the text of the alert was included. We will edit the notification definition and update the text message that is sent in the alert.
+
++----------------+
+| |slackalert_4| |
++----------------+
+
+Here we use macro substitution in the message text to extract the message from the alert data. Our alerts in Slack will now contain the message data.
+
++----------------+
+| |slackalert_5| |
++----------------+
