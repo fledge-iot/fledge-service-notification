@@ -153,7 +153,7 @@ NotificationDelivery::~NotificationDelivery()
 	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
 
 	// Create data object for delivery queue
-	// with no reason, no message and notifcation instance set to NULL
+	// with no reason, no message and notification instance set to NULL
 	// This element added to delivery queue will signal the need of shutting down
 	// the DeliveryPlugin after processing all data for this Delivery
 	DeliveryDataElement* deliveryData =

@@ -265,7 +265,7 @@ bool AlertSubscriptionElement::registerSubscription(StorageClient& storage) cons
 	NotificationApi *api = NotificationApi::getInstance();
 	string callBackURL = api->getAlertCallbackURL();
 	vector<std::string> keyValues;
-	Logger::getLogger()->fatal("Adding alert subscription for %s", callBackURL.c_str());
+	Logger::getLogger()->debug("Adding alert subscription for %s", callBackURL.c_str());
 	if (!storage.registerTableNotification("alerts", "", keyValues, "insert", callBackURL))
 		Logger::getLogger()->error("Failed to register insert handler for alert subscription");
 	return storage.registerTableNotification("alerts", "", keyValues, "update", callBackURL);

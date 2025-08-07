@@ -717,7 +717,7 @@ bool NotificationApi::queueAuditNotification(const string& auditCode,
 bool NotificationApi::queueStatsNotification(const string& statistic,
 					const string& payload)
 {
-	Logger::getLogger()->debug("Recieved statisitics notification for statistic %s", statistic.c_str());
+	Logger::getLogger()->debug("Received statistics notification for statistic %s", statistic.c_str());
 
 	Reading *reading = new Reading(statistic, payload);
 	vector<Reading *> readingVec;
@@ -762,7 +762,7 @@ bool NotificationApi::queueStatsNotification(const string& statistic,
 bool NotificationApi::queueStatsRateNotification(const string& statistic,
 					const string& payload)
 {
-	Logger::getLogger()->debug("Recieved statisitics rate notification for statistic %s", statistic.c_str());
+	Logger::getLogger()->debug("Received statistics rate notification for statistic %s", statistic.c_str());
 
 	Reading *reading = new Reading(statistic, payload);
 	vector<Reading *> readingVec;
@@ -805,7 +805,7 @@ bool NotificationApi::queueStatsRateNotification(const string& statistic,
  */
 bool NotificationApi::queueAlertNotification(const string& payload)
 {
-	Logger::getLogger()->debug("Recieved alert notification: %s", payload.c_str());
+	Logger::getLogger()->debug("Received alert notification: %s", payload.c_str());
 
 	Reading *reading = new Reading("alert", payload);
 	vector<Reading *> readingVec;

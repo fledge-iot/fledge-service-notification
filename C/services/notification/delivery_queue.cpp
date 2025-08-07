@@ -43,7 +43,7 @@ static void worker(DeliveryQueue* queue, int num)
 /**
  * DeliveryDataElement construcrtor
  *
- * @param    delieveryName	The deliveryName to process
+ * @param    deliveryName	The deliveryName to process
  */
 DeliveryDataElement::DeliveryDataElement(
 					 DeliveryPlugin* plugin,
