@@ -10,6 +10,7 @@
 
 #include <delivery_plugin.h>
 #include <rapidjson/document.h>
+#include <rapidjson/writer.h>
 
 using namespace std;
 using namespace rapidjson;
@@ -269,7 +270,13 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 		// Replace Macros by datapoint value
 		for (auto it =  macros.rbegin(); it != macros.rend(); ++it)
 		{
-			if (v.HasMember(it->name.c_str()))
+			if (it->name == "ASSET")
+			{
+				rval.replace(it->start, it->name.length()+2
+							+ (it->def.empty() ? 0 : it->def.length() + 1),
+							assetName);
+			}
+			else if (v.HasMember(it->name.c_str()))
 			{
 				string val;
 				if (v[it->name.c_str()].IsString())
@@ -295,14 +302,21 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 					}
 					
 				}
+				else if (v[it->name.c_str()].IsObject())
+				{
+					StringBuffer strbuf;
+					Writer<rapidjson::StringBuffer> writer(strbuf);
+					v[it->name.c_str()].Accept(writer);
+			                val = strbuf.GetString();
+				}
 				else
 				{
-					Logger::getLogger()->warn("The datapoint %s cannot be used as a macro substitution as it is not a string or numeric value",it->name.c_str());
+					Logger::getLogger()->warn("The datapoint %s cannot be used as a macro substitution as it is not a string, numeric value or JSON document",it->name.c_str());
 					continue;
 				}
 				rval.replace(it->start, it->name.length()+2
 							+ (it->def.empty() ? 0 : it->def.length() + 1),
-							val );
+							val);
 			}
 			else if (!it->def.empty())
 			{

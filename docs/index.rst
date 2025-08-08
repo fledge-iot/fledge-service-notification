@@ -501,8 +501,12 @@ Macro Substitution
 
 As can be seen from the alert example above the notification service supports macro expansion within the text of the message associated with each notification instance. This macro expansion allows values that triggered the alert to be included in the alert text itself.
 
-The macro expansion is done in a similar way to other macro expansion within Fledge, the name of a datapoint can be enclosed in the $ character. The value of that datapoint in the text message.
+The macro expansion is done in a similar way to other macro expansion within Fledge, the name of a datapoint can be enclosed in the $ character. The value of that datapoint in the text message. When the source of the notification is the reading data, the special macro name of *$ASSET$* can also be used to substitute the asset name of the reading into the text string.
 
-When statistics are used as the source, instead of the datapoint name the name of the statistic is used. For audit data the log code is used and for alert data the most useful data in the message item, although the key and urgency items may also be used.
+When statistics are used as the source, instead of the datapoint name the value *$key$* can be used to get the statistic name and *$value$* to get the value of the statistic.
+
+Audit data allows the log code to be used by specifying the value *$code$*, *$level$* for the log level. The log message can also be used, but this is a more complex JSON structure and not suitable for message display.
+
+Alert data provides the alert message, alert urgency and alert key. The most useful data is the message item *$message$*, although the *$key$* and *$urgency$* items may also be used.
 
 Default values can be defined and used if the required data is not present. This is defined by using the construct *$datapoint|default$* to define a default string to substitute.
