@@ -495,3 +495,14 @@ Here we use macro substitution in the message text to extract the message from t
 +----------------+
 | |slackalert_5| |
 +----------------+
+
+Macro Substitution
+------------------
+
+As can be seen from the alert example above the notification service supports macro expansion within the text of the message associated with each notification instance. This macro expansion allows values that triggered the alert to be included in the alert text itself.
+
+The macro expansion is done in a similar way to other macro expansion within Fledge, the name of a datapoint can be enclosed in the $ character. The value of that datapoint in the text message.
+
+When statistics are used as the source, instead of the datapoint name the name of the statistic is used. For audit data the log code is used and for alert data the most useful data in the message item, although the key and urgency items may also be used.
+
+Default values can be defined and used if the required data is not present. This is defined by using the construct *$datapoint|default$* to define a default string to substitute.
