@@ -1271,7 +1271,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			"displayName": "Retrigger Time",
 			"order": "7",
 			"type": "float",
-			"default": "PLACEHOLDER_RETRIGGER_TIME",
+			"default": PLACEHOLDER_RETRIGGER_TIME,
 			"minimum": "0.0"
 		},
 		"filter": {
@@ -1287,12 +1287,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 	// Replace placeholders with actual values
 	size_t pos = payload.find("PLACEHOLDER_NAME");
 	if (pos != string::npos) {
-		payload.replace(pos, strlen("PLACEHOLDER_NAME"), escapedName);
-	}
-	
-	pos = payload.find("PLACEHOLDER_RETRIGGER_TIME");
-	if (pos != string::npos) {
-		payload.replace(pos, strlen("PLACEHOLDER_RETRIGGER_TIME"), defaultRetriggerTime);
+		payload.replace(pos, sizeof("PLACEHOLDER_NAME") - 1, escapedName);
 	}
 	
 	DefaultConfigCategory notificationConfig(name, payload);
