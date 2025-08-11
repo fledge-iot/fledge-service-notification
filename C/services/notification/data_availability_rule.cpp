@@ -47,7 +47,7 @@ static const char *default_config = QUOTE({
 		"order" : "3"
 	},
 	"alerts" : {
-		"description" : "Deliver alert data to the notificaiton delivery mechanism",
+		"description" : "Deliver alert data to the notification delivery mechanism",
 		"type" : "boolean",
 		"default" : "false",
 		"displayName" : "Alerts",

@@ -238,7 +238,7 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 {
 	string rval = message;
 	vector<Macro> macros;
-	Logger::getLogger()->debug("Expand macros in messge %s with reason %s",
+	Logger::getLogger()->debug("Expand macros in message %s with reason %s",
 			message.c_str(), reason.c_str());
 	collectMacroInfo(rval, macros);
 	if (macros.size())
@@ -248,7 +248,7 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 		if (doc.HasParseError())
 		{
 			// Failed to parse the reason, ignore macros
-			Logger::getLogger()->warn("Unable to parse reason document, macro substitutios withinthe notification will be ignored. The reason document is:  %s", reason.c_str());
+			Logger::getLogger()->warn("Unable to parse reason document, macro substitutios within the notification will be ignored. The reason document is:  %s", reason.c_str());
 			return rval;
 		}
 		if (!doc.HasMember("data"))
@@ -260,7 +260,7 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 		Value::ConstMemberIterator itr = data.MemberBegin();
 		if (itr == data.MemberEnd())
 		{
-			Logger::getLogger()->warn("Unable to perform macro substitution in the notifcation alert. No data element has no children, reason document %s", reason.c_str());
+			Logger::getLogger()->warn("Unable to perform macro substitution in the notifcation alert. Data element has no children, reason document %s", reason.c_str());
 			return rval;
 		}
 		const Value& v = itr->value;

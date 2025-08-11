@@ -818,7 +818,7 @@ bool NotificationApi::queueAlertNotification(const string& payload)
 	catch (exception* ex)
 	{
 		m_logger->error("Exception '" + string(ex->what()) + \
-				"' while parsing readings for alaert" + \
+				"' while parsing readings for alert" + \
 				" with payload " + payload);
 		delete ex;
 		return false;
