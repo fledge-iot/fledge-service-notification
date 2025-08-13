@@ -1213,7 +1213,6 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 	bool ret = false;
 
 	// Create an empty Notification category
-	string defaultRetriggerTime = to_string(DEFAULT_RETRIGGER_TIME);
 	string escapedName = JSONescape(name);
 	
 	string payload = QUOTE({
@@ -1271,7 +1270,7 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 			"displayName": "Retrigger Time",
 			"order": "7",
 			"type": "float",
-			"default": PLACEHOLDER_RETRIGGER_TIME,
+			"default": DEFAULT_RETRIGGER_TIME,
 			"minimum": "0.0"
 		},
 		"filter": {
