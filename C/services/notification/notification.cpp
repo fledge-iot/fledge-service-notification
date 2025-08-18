@@ -58,6 +58,20 @@ static void signalHandler(int signal)
 	}
 }
 
+// Displays service information in JSON format
+static void printServiceInfoJSON()
+{
+	std::cout
+		<< "{\"name\": " << "\"notification_c\"" << ","
+		<< "\"description\": " << "\"Fledge Notification Service\"" << ", "
+		<< "\"package\": " << "\"fledge-service-notification\"" << ", "
+		<< "\"type\": " << "\"notification\"" << ", "
+		<< "\"process\": " << "\"notification\"" << ", "
+		<< "\"process_script\": " << "\"scripts/service/notification_c\"" << ", "
+		<< "\"frontend\": \"\"}"
+	<< std::endl;
+}
+
 /**
  * Notification service main entry point
  */
@@ -79,6 +93,11 @@ int main(int argc, char *argv[])
 
 	for (int i = 1; i < argc; i++)
 	{
+		if (!strcmp(argv[i], "--info"))
+		{
+			printServiceInfoJSON();
+			return 0;
+		}
 		if (!strcmp(argv[i], "-d"))
 		{
 			daemonMode = false;
