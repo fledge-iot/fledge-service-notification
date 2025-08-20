@@ -59,16 +59,15 @@ static void signalHandler(int signal)
 }
 
 // Displays service information in JSON format
-static void printServiceInfoJSON()
+static void printServiceInfoAsJSON()
 {
 	std::cout
-		<< "{\"name\": " << "\"notification_c\"" << ","
-		<< "\"description\": " << "\"Fledge Notification Service\"" << ", "
+		<< "{\"name\": " << "\"Notification Service\"" << ","
+		<< "\"description\": " << "\"Fledge Notification Service to send notifications\"" << ", "
 		<< "\"package\": " << "\"fledge-service-notification\"" << ", "
 		<< "\"type\": " << "\"notification\"" << ", "
-		<< "\"process\": " << "\"notification\"" << ", "
-		<< "\"process_script\": " << "\"scripts/service/notification_c\"" << ", "
-		<< "\"frontend\": \"\"}"
+		<< "\"process_name\": " << "\"notification_c\"" << ", "
+		<< "\"process_script\": " << "\"services/notification_c\"}"
 	<< std::endl;
 }
 
@@ -95,7 +94,7 @@ int main(int argc, char *argv[])
 	{
 		if (!strcmp(argv[i], "--info"))
 		{
-			printServiceInfoJSON();
+			printServiceInfoAsJSON();
 			return 0;
 		}
 		if (!strcmp(argv[i], "-d"))
