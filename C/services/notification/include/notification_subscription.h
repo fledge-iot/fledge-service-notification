@@ -96,7 +96,7 @@ class AuditSubscriptionElement : public SubscriptionElement
 
 /**
  * The SubscriptionElement class handles the notification registration to
- * storage server based on statisitic valuesand its notification name.
+ * storage server based on statistic values and its notification name.
  */
 class StatsSubscriptionElement : public SubscriptionElement
 {
@@ -117,7 +117,7 @@ class StatsSubscriptionElement : public SubscriptionElement
 
 /**
  * The SubscriptionElement class handles the notification registration to
- * storage server based on statisitic rate values and its notification name.
+ * storage server based on statistic rate values and its notification name.
  */
 class StatsRateSubscriptionElement : public SubscriptionElement
 {

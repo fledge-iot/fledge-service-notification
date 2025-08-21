@@ -227,7 +227,7 @@ void DeliveryPlugin::collectMacroInfo(const string& str, vector<Macro>& macros)
  * $key|default$. Where key is one of the keys found in
  * the notification data of the reason document. Keys
  * are typical datapoint names that triggered the alert
- * for readings, statis values for statistics data and
+ * for readings, statistic values for statistics data and
  * messages for alert data.
  *
  * @param message	The string to substitute into
@@ -248,12 +248,12 @@ string  DeliveryPlugin::expandMacros(const string& message, const string& reason
 		if (doc.HasParseError())
 		{
 			// Failed to parse the reason, ignore macros
-			Logger::getLogger()->warn("Unable to parse reason document, macro substitutios within the notification will be ignored. The reason document is:  %s", reason.c_str());
+			Logger::getLogger()->warn("Unable to parse reason document, macro substitutions within the notification will be ignored. The reason document is:  %s", reason.c_str());
 			return rval;
 		}
 		if (!doc.HasMember("data"))
 		{
-			Logger::getLogger()->warn("Unable to perform macro substitution in the notifcation alert. No data element was found in reason document %s", reason.c_str());
+			Logger::getLogger()->warn("Unable to perform macro substitution in the notification alert. No data element was found in reason document %s", reason.c_str());
 			return rval;
 		}
 		Value& data = doc["data"];

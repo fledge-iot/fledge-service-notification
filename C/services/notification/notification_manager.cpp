@@ -30,7 +30,6 @@
 #include <filter_pipeline.h>
 #include <config_handler.h>
 
-
 using namespace std;
 
 struct AssetTrackInfo
@@ -154,7 +153,7 @@ NotificationDelivery::~NotificationDelivery()
 	DeliveryQueue* dQueue = DeliveryQueue::getInstance();
 
 	// Create data object for delivery queue
-	// with no reason, no message and notifcation instance set to NULL
+	// with no reason, no message and notification instance set to NULL
 	// This element added to delivery queue will signal the need of shutting down
 	// the DeliveryPlugin after processing all data for this Delivery
 	DeliveryDataElement* deliveryData =
@@ -1214,36 +1213,82 @@ bool NotificationManager::APIcreateEmptyInstance(const string& name)
 	bool ret = false;
 
 	// Create an empty Notification category
-	string payload = "{\"name\" : {\"description\" : \"The name of this notification\", "
-			 "\"readonly\": \"true\", "
-			 "\"type\" : \"string\", \"default\": \"" + JSONescape(name) + "\"}, ";
-	payload += "\"description\" :{\"description\" : \"Description of this notification\", "
-			 "\"displayName\" : \"Description\", \"order\" : \"1\","
-			 "\"type\": \"string\", \"default\": \"\"}, "
-		   "\"rule\" : {\"description\": \"Rule to evaluate\", "
-			 "\"displayName\" : \"Rule\", \"order\" : \"2\","
-			 "\"type\": \"string\", \"default\": \"\"}, "
-		   "\"channel\": {\"description\": \"Channel to send alert on\", "
-			 "\"displayName\" : \"Channel\", \"order\" : \"3\","
-			 "\"type\": \"string\", \"default\": \"\"}, "
-		   "\"notification_type\": {\"description\": \"Type of notification\", \"type\": "
-			 "\"enumeration\", \"options\": [ \"one shot\", \"retriggered\", \"toggled\" ], "
-			 "\"displayName\" : \"Type\", \"order\" : \"4\","
-			 "\"default\" : \"one shot\"}, "
-		   "\"text\": {\"description\": \"Text message to send for this notification\", "
-			 "\"displayName\" : \"Message\", \"order\" : \"5\","
-			 "\"type\": \"string\", \"default\": \"\"}, "
-		   "\"enable\": {\"description\" : \"Enabled\", "
-			 "\"displayName\" : \"Enabled\", \"order\" : \"6\","
-			 "\"type\": \"boolean\", \"default\": \"false\"}, " 
-		   "\"retrigger_time\": {\"description\" : \"Retrigger time in seconds for sending a new notification.\", "
-			 "\"displayName\" : \"Retrigger Time\", \"order\" : \"7\", "
-			 "\"type\": \"float\",  \"default\": \"" + to_string(DEFAULT_RETRIGGER_TIME) + "\", \"minimum\" : \"0.0\"}, "
-		   "\"filter\": {\"description\": \"Filter pipeline\", "
-			 "\"displayName\" : \"Filter Pipeline\", \"order\" : \"8\","
-			 "\"type\": \"JSON\", \"default\": \"{\\\"pipeline\\\": []}\", "
-			 "\"readonly\": \"true\"} }";
-
+	string escapedName = JSONescape(name);
+	
+	string payload = QUOTE({
+		"name": {
+			"description": "The name of this notification",
+			"readonly": "true",
+			"type": "string",
+			"default": "PLACEHOLDER_NAME"
+		},
+		"description": {
+			"description": "Description of this notification",
+			"displayName": "Description",
+			"order": "1",
+			"type": "string",
+			"default": ""
+		},
+		"rule": {
+			"description": "Rule to evaluate",
+			"displayName": "Rule",
+			"order": "2",
+			"type": "string",
+			"default": ""
+		},
+		"channel": {
+			"description": "Channel to send alert on",
+			"displayName": "Channel",
+			"order": "3",
+			"type": "string",
+			"default": ""
+		},
+		"notification_type": {
+			"description": "Type of notification",
+			"type": "enumeration",
+			"options": ["one shot", "retriggered", "toggled"],
+			"displayName": "Type",
+			"order": "4",
+			"default": "one shot"
+		},
+		"text": {
+			"description": "Text message to send for this notification",
+			"displayName": "Message",
+			"order": "5",
+			"type": "string",
+			"default": ""
+		},
+		"enable": {
+			"description": "Enabled",
+			"displayName": "Enabled",
+			"order": "6",
+			"type": "boolean",
+			"default": "false"
+		},
+		"retrigger_time": {
+			"description": "Retrigger time in seconds for sending a new notification.",
+			"displayName": "Retrigger Time",
+			"order": "7",
+			"type": "float",
+			"default": DEFAULT_RETRIGGER_TIME,
+			"minimum": "0.0"
+		},
+		"filter": {
+			"description": "Filter pipeline",
+			"displayName": "Filter Pipeline",
+			"order": "8",
+			"type": "JSON",
+			"default": "{\"pipeline\": []}",
+			"readonly": "true"
+		}
+	});
+	
+	// Replace placeholders with actual values
+	size_t pos = payload.find("PLACEHOLDER_NAME");
+	if (pos != string::npos) {
+		payload.replace(pos, sizeof("PLACEHOLDER_NAME") - 1, escapedName);
+	}
+	
 	DefaultConfigCategory notificationConfig(name, payload);
 	notificationConfig.setDescription("Notification " + name);
 

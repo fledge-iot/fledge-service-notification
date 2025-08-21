@@ -227,7 +227,7 @@ void NotificationQueue::stop()
 					   ++itr)
 				{
 					// Remove all buffers:
-					// queue process is donwn, queue lock not needed
+					// queue process is down, queue lock not needed
 					this->clearBufferData(ruleName, (*itr).getAssetName());
 				}
 			}
@@ -459,7 +459,7 @@ bool NotificationQueue::feedAllDataBuffers(NotificationQueueElement* data)
 	/*
 	 * Now collect all pending deletes of notification instances
 	 * and really delete them. We defer this until we know we are not
-	 * processing any of the noptifications.
+	 * processing any of the notifications.
 	 */
 	manager->collectZombies();
 
@@ -829,7 +829,7 @@ void NotificationQueue::processAllDataBuffers(const string& key, const string& a
  * @param    info		The notification details for assetName
  * @param    readingsData	All data buffers
  * @param    results		The output result map to fill
- * @return			True if notifcation is ready to be sent,
+ * @return			True if notification is ready to be sent,
  *				false otherwise.
  *
  */
@@ -1874,7 +1874,7 @@ void NotificationQueue::processTime()
 		/*
 		 * Now collect all pending deletes of notification instances
 		 * and really delete them. We defer this until we know we are not
-		 * processing any of the noptifications.
+		 * processing any of the notifications.
 		 */
 		// Lock needed
 		manager->collectZombies();
