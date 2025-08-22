@@ -20,6 +20,11 @@
 .. |ADHRule| image:: images/ADHRule.jpg
 .. |ADHRatePerMinute| image:: images/ADHRatePerMinute.jpg
 .. |ServiceRestarted| image:: images/ServiceRestarted.jpg
+.. |slackalert_1| image:: images/slackalert_1.jpg
+.. |slackalert_2| image:: images/slackalert_2.jpg
+.. |slackalert_3| image:: images/slackalert_3.jpg
+.. |slackalert_4| image:: images/slackalert_4.jpg
+.. |slackalert_5| image:: images/slackalert_5.jpg
 
 .. Links
 .. |rule_plugins| raw:: html
@@ -39,13 +44,16 @@ Notifications Service
 *********************
 
 Fledge supports an optional service, known as the notification service
-that adds an event engine to the Fledge installation. Notifications can be created based
+that adds an event engine to the Fledge installation. Notifications can
+be created based upon various conditions that make use of;
 
   - The data that is flowing through Fledge.
 
   - The statistics that Fledge is collecting.
 
   - The audit log entries that Fledge creates.
+
+  - The alerts raised by the Fledge instance.
 
 Not all notification rule plugins are able to accept and process all
 types of data, therefore you may find particular rules only offer
@@ -102,6 +110,27 @@ data with the audit log name code as the data name and the data that is
 posted with the audit log entry as the data points of the data. There is a
 limited set of notification rule plugins that can be used with this data as
 it tends to be non-numeric and most plugins expect to sue numeric data.
+
+Alerts
+------
+
+Fledge will alert users to specific actions using the *bell* icon on
+the menu bar. These alerts can be used as a source of notification data
+by some of the notification plugins. Most notably the data availability
+plugin.
+
+The use of alerts as a source for notifications is however limited as these
+alerts are only capable of transporting a string to the notification
+system. This string describes the cause of the alert, therefore there is little
+in the way of processing that can be done when alerts are used as a notification
+source.
+
+The primary use of alerts in notifications is to provide alternate channels for
+the delivery of these alerts. Rather than simply showing the alert in the user interface
+menu bar, the alert may be sent to any of the notification delivery
+channels. This greatly increases the ability to deliver these alerts
+to programmatic consumers of the alerts or end users not currently connected to the
+Fledge user interface.
 
 Notifications
 =============
@@ -391,7 +420,7 @@ This will cause the notification to trigger if the value of the statistic
 is less than 1. If we wanted to trigger on a low rather than 0 flow of
 data then we can obviously increase this value. Of course that is reliant
 on the user knowing what a reasonable value is. It might be better, if an
-alert is required when the flow drops of to use the 8Average* filter and
+alert is required when the flow drops of to use the *Average* filter and
 define if the flow rate drop by 10%, or whatever percentage is required,
 below the observed average flow rate then raise a notification.
 
@@ -429,3 +458,55 @@ We leave the *Asset Code* blank as we do not wish to monitor any reading data.
 +--------------------+
 
 Each time a *SRVRG* audit entry is made a notification will be sent, again any of the notification delivery mechanisms can be used to support the delivery of this notification.
+
+Alert Example
+-------------
+
+Alerts are normally displayed via the Fledge user interface, a bell icon in the status bar will show a count of outstanding alerts. If the user hovers over this bell icon the alerts will be displayed. This gives useful information when connected to the user interface, however it might be more useful to be able to have those alerts proactively delivered to another device or system. Using the notification service and the alert datasource, these alerts may be delivered via any of the notification delivery plugins supported by Fledge.
+
+In this example we will show how to deliver those alert to an instant messaging service such as Slack.
+
+We will use the *Data Availability* notification rule plugin in this example and set the source of data for the plugin to be *Alerts*.
+
++----------------+
+| |slackalert_1| |
++----------------+
+
+We will select the *Slack* plugin as the delivery plugin and configure it.
+
++----------------+
+| |slackalert_2| |
++----------------+
+
+After completing the configuration of the notification whenever we get an alert raised in Fledge we will receive a Slack message.
+
++----------------+
+| |slackalert_3| |
++----------------+
+
+This is useful, but could be made better if the text of the alert was included. We will edit the notification definition and update the text message that is sent in the alert.
+
++----------------+
+| |slackalert_4| |
++----------------+
+
+Here we use macro substitution in the message text to extract the message from the alert data. Our alerts in Slack will now contain the message data.
+
++----------------+
+| |slackalert_5| |
++----------------+
+
+Macro Substitution
+------------------
+
+As can be seen from the alert example above the notification service supports macro expansion within the text of the message associated with each notification instance. This macro expansion allows values that triggered the alert to be included in the alert text itself.
+
+The macro expansion is done in a similar way to other macro expansion within Fledge, the name of a datapoint can be enclosed in the $ character. The value of that datapoint in the text message. When the source of the notification is the reading data, the special macro name of *$ASSET$* can also be used to substitute the asset name of the reading into the text string.
+
+When statistics are used as the source, instead of the datapoint name the value *$key$* can be used to get the statistic name and *$value$* to get the value of the statistic.
+
+Audit data allows the log code to be used by specifying the value *$code$*, *$level$* for the log level. The log message can also be used, but this is a more complex JSON structure and not suitable for message display.
+
+Alert data provides the alert message, alert urgency and alert key. The most useful data is the message item *$message$*, although the *$key$* and *$urgency$* items may also be used.
+
+Default values can be defined and used if the required data is not present. This is defined by using the construct *$datapoint|default$* to define a default string to substitute.

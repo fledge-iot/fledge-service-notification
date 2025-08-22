@@ -56,6 +56,22 @@ void notificationStatsReceiveWrapper(shared_ptr<HttpServer::Response> response,
 }
 
 /**
+ * Wrapper function for the notification POST callback API call used for alert events.
+ *
+ * POST /notification/reading/alert
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void notificationAlertReceiveWrapper(shared_ptr<HttpServer::Response> response,
+				shared_ptr<HttpServer::Request> request)
+{
+	Logger::getLogger()->debug("Alert callback received");
+	NotificationApi* api = NotificationApi::getInstance();
+	api->processAlertCallback(response, request);
+}
+
+/**
  * Wrapper function for the notification POST callback API call used for audit events.
  *
  * POST /notification/reading/audit/{auditCode}
@@ -327,6 +343,7 @@ void NotificationApi::initResources()
 	m_server->resource[RECEIVE_AUDIT_NOTIFICATION]["POST"] = notificationAuditReceiveWrapper;
 	m_server->resource[RECEIVE_STATS_NOTIFICATION]["POST"] = notificationStatsReceiveWrapper;
 	m_server->resource[RECEIVE_STATS_RATE_NOTIFICATION]["POST"] = notificationStatsRateReceiveWrapper;
+	m_server->resource[RECEIVE_ALERT_NOTIFICATION]["POST"] = notificationAlertReceiveWrapper;
 	m_server->resource[GET_NOTIFICATION_INSTANCES]["GET"] = notificationGetInstances;
 	m_server->resource[GET_NOTIFICATION_RULES]["GET"] = notificationGetRules;
 	m_server->resource[GET_NOTIFICATION_DELIVERY]["GET"] = notificationGetDelivery;
@@ -568,6 +585,47 @@ void NotificationApi::processStatsRateCallback(shared_ptr<HttpServer::Response> 
 }
 
 /**
+ * Add data provided in the alert payload of callback API call
+ * into the notification queue.
+ * 
+ * This is called by the storage service when new data arrives
+ * for an asset in which we have registered an interest.
+ *
+ * @param response	The response stream to send the response on
+ * @param request	The HTTP request
+ */
+void NotificationApi::processAlertCallback(shared_ptr<HttpServer::Response> response,
+				      shared_ptr<HttpServer::Request> request)
+{
+	try
+	{
+		// URL decode statistic
+		string payload = request->content.string();
+		string responsePayload;
+		// Add data to the queue
+		if (queueAlertNotification(payload))
+		{
+			responsePayload = "{ \"response\" : \"processed\", \"";
+			responsePayload += "alert";
+			responsePayload += "\" : \"data queued\" }";
+
+			this->respond(response, responsePayload);
+		}
+		else
+		{
+			responsePayload = "{ \"error\": \"error_message\" }";
+			this->respond(response,
+				      SimpleWeb::StatusCode::client_error_bad_request,
+				      responsePayload);
+		}
+	}
+	catch (exception ex)
+	{
+		this->internalError(response, ex);
+	}
+}
+
+/**
  * Add readings data of asset name into the process queue
  *
  * @param assetName	The asset name
@@ -740,6 +798,48 @@ bool NotificationApi::queueStatsRateNotification(const string& statistic,
 }
 
 /**
+ * Add alert data of asset name into the process queue
+ *
+ * @param payload	The data for the audit code
+ * @return		false error, true on success
+ */
+bool NotificationApi::queueAlertNotification(const string& payload)
+{
+	Logger::getLogger()->debug("Recieved alert notification: %s", payload.c_str());
+
+	Reading *reading = new Reading("alert", payload);
+	vector<Reading *> readingVec;
+	readingVec.push_back(reading);
+	ReadingSet* readings = NULL;
+	try
+	{
+		readings = new ReadingSet(&readingVec);
+	}
+	catch (exception* ex)
+	{
+		m_logger->error("Exception '" + string(ex->what()) + \
+				"' while parsing readings for alert" + \
+				" with payload " + payload);
+		delete ex;
+		return false;
+	}
+	catch (...)
+	{
+		std::exception_ptr p = std::current_exception();
+		string name = (p ? p.__cxa_exception_type()->name() : "null");
+		m_logger->error("Exception '" + name + \
+				"' while parsing readings for alert");
+		return false;
+	}
+
+	NotificationQueue* queue = NotificationQueue::getInstance();
+	NotificationQueueElement* item =  new NotificationQueueElement("alert", "alert", readings);
+
+	// Add element to the queue
+	return queue->addElement(item);
+}
+
+/**
  * Return JSON string of a notification object
  *
  * @param object	The requested object type
@@ -870,6 +970,7 @@ void NotificationApi::setCallBackURL()
 	m_auditCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/audit/";
 	m_statsCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/stat/";
 	m_statsRateCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/rate/";
+	m_alertCallbackURL = "http://127.0.0.1:" + to_string(apiPort) + "/notification/reading/alert";
 }
 
 /**

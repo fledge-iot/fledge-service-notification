@@ -43,7 +43,6 @@ class DeliveryDataElement
 					getInstance() { return m_instance; };
 		NotificationInstance*
 					m_instance;
-
 	private:
 		DeliveryPlugin* m_plugin;
 		std::string	m_deliveryName;
@@ -124,6 +123,7 @@ class DeliveryQueue
 
 	private:
 		void			processDelivery(DeliveryQueueElement* data);
+
 
 	private:
 
