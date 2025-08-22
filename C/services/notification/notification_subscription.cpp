@@ -239,6 +239,54 @@ bool StatsRateSubscriptionElement::unregister(StorageClient& storage) const
 }
 
 /**
+ * Constructor for alert subscription elements
+ */
+AlertSubscriptionElement::AlertSubscriptionElement(const std::string& notificationName,
+                                    NotificationInstance* notification) :
+					SubscriptionElement(notificationName, notification)
+{
+}
+
+/**
+ * AlertSubscriptionElement class destructor
+ */
+AlertSubscriptionElement::~AlertSubscriptionElement()
+{
+}
+
+/**
+ * Register the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AlertSubscriptionElement::registerSubscription(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getAlertCallbackURL();
+	vector<std::string> keyValues;
+	Logger::getLogger()->info("Adding alert subscription for %s", callBackURL.c_str());
+	if (!storage.registerTableNotification("alerts", "", keyValues, "insert", callBackURL))
+		Logger::getLogger()->error("Failed to register insert handler for alert subscription");
+	return storage.registerTableNotification("alerts", "", keyValues, "update", callBackURL);
+}
+
+/**
+ * Unregister the subscription with the storage engine
+ *
+ * @param storage	The storage engine client
+ * @return bool		True if unregistered
+ */
+bool AlertSubscriptionElement::unregister(StorageClient& storage) const
+{
+	NotificationApi *api = NotificationApi::getInstance();
+	string callBackURL = api->getStatsRateCallbackURL();
+	vector<std::string> keyValues;
+	storage.unregisterTableNotification("alerts", "", keyValues, "update", callBackURL);
+	return storage.unregisterTableNotification("alerts", "", keyValues, "insert", callBackURL);
+}
+
+/**
  * Constructor for the NotificationSubscription class
  */
 NotificationSubscription::NotificationSubscription(const string& notificationName,
@@ -359,14 +407,13 @@ bool NotificationSubscription::addSubscription(SubscriptionElement *element)
 
 	string key = element->getKey();
 	m_subscriptions[key].push_back(element);
-	if (m_subscriptions[key].size() == 1)
+	if (m_subscriptions[key].size() <= 1)
 	{
 		if (element->registerSubscription(m_storage))
 			m_logger->info("Register for %s notification from the storage layer", key.c_str());
 		else
 			m_logger->error("Failed to register for %s notification from the storage layer", key.c_str());
 	}
-
 
 	m_logger->info("Subscription for  '" + key + \
 			       "' has # " + to_string(m_subscriptions[key].size()) + " rules");
@@ -610,6 +657,32 @@ bool NotificationSubscription::createSubscription(NotificationInstance* instance
 				theRule->addAsset(rateInfo);
 
 				StatsRateSubscriptionElement *subscription = new StatsRateSubscriptionElement(rate,
+								 instance->getName(),
+								 instance);
+				lock_guard<mutex> guard(m_subscriptionMutex);
+				ret = this->addSubscription(subscription);
+
+			}
+			else if (itr->HasMember("alert"))
+			{
+				// Get optional evaluation type and time period for asset:
+				// (All :30, Minimum: 10, Maximum: 10, Average: 10)
+				// If time based rule is set then
+				// set EvaluationType::Interval for data buffer operation
+				EvaluationType type = theRule->isTimeBased() ?
+					EvaluationType(EvaluationType::Interval, timeBasedInterval) :
+					this->getEvalType(*itr);
+
+				// Create NotificationDetail object
+				NotificationDetail alertInfo("alert",
+							    "alert",
+							    ruleName,
+							    type);
+
+				// Add assetInfo to its rule
+				theRule->addAsset(alertInfo);
+
+				AlertSubscriptionElement *subscription = new AlertSubscriptionElement(
 								 instance->getName(),
 								 instance);
 				lock_guard<mutex> guard(m_subscriptionMutex);

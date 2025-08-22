@@ -137,6 +137,23 @@ class StatsRateSubscriptionElement : public SubscriptionElement
 };
 
 /**
+ * The SubscriptionElement class handles the notification registration to
+ * storage server based on alerts and its notification name.
+ */
+class AlertSubscriptionElement : public SubscriptionElement
+{
+	public:
+		AlertSubscriptionElement(const std::string& notificationName,
+				    NotificationInstance* notification);
+
+		~AlertSubscriptionElement();
+
+		bool		registerSubscription(StorageClient& storage) const;
+		bool		unregister(StorageClient& storage) const;
+		string		getKey() const { return string("alert::alert"); };
+};
+
+/**
  * The NotificationSubscription class handles all notification registrations to
  * storage server.
  * Registrations are done per asset name and one asset name might have different

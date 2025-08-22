@@ -18,6 +18,7 @@ class AsyncConfigChangeTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        delete Logger::getLogger();
         // Initialize test environment
         m_service = new NotificationService("TestNotificationService", "");
         
