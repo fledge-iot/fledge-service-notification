@@ -86,5 +86,7 @@ if (FLEDGE_INSTALL)
 	install(TARGETS ${EXEC} RUNTIME DESTINATION ${FLEDGE_INSTALL}/services)
 	install(DIRECTORY DESTINATION ${FLEDGE_INSTALL}/plugins/notificationDelivery)
 	install(DIRECTORY DESTINATION ${FLEDGE_INSTALL}/plugins/notificationRule)
-
+	# Install the notification_c startup script
+	install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/../../scripts/notification_c DESTINATION ${FLEDGE_INSTALL}/scripts/services
+		PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_WRITE GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 endif()
