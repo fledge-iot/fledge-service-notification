@@ -61,7 +61,7 @@ static void signalHandler(int signal)
 // Displays service information in JSON format
 static void printServiceInfoAsJSON()
 {
-	static std::string serviceInfoJSON = R"({"name":"Notification Service","description":"Service used to detect events and send notifications to external systems","package":"fledge-service-notification","type":"notification","process_name":"notification_c","process_script":"[services/notification_c]"})" ;
+	std::string serviceInfoJSON = R"({"name":")" + std::string(SERVICE_NAME) + R"(","description":"Service used to detect events and send notifications to external systems","package":"fledge-service-notification","type":")" + std::string(SERVICE_TYPE) + R"(","process":"notification_c","process_script":"[\"services/notification_c\"]","startup_priority":30})" ;
 
 	std::cout << serviceInfoJSON << std::endl;
 }
